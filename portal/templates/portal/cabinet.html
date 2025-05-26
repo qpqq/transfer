@@ -1,0 +1,288 @@
+{% load i18n %}
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>{% trans "Личный кабинет" %}</title>
+    <style>
+        table, th, td {
+            border: 1px solid #666;
+            border-collapse: collapse;
+            padding: 8px;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: #fff;
+            padding: 20px;
+            border-radius: 4px;
+            max-width: 550px;
+            width: 90%;
+            max-height: 80%;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 8px;
+            right: 12px;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .modal-header {
+            margin-bottom: 15px;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.2em;
+        }
+
+        .error-message {
+            color: red;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .popup-success {
+            background: #f0fff0;
+            border: 1px solid #4caf50;
+            text-align: center;
+            max-width: 400px;
+        }
+    </style>
+</head>
+<body>
+<h1>{% trans "Личный кабинет студента" %}</h1>
+<p>
+    {% trans "Вы зашли как" %}: <strong>{{ student.full_name }}</strong><br>
+    {% trans "E-mail" %}: <strong>{{ student.email }}</strong>
+</p>
+
+{% if data %}
+    <table>
+        <thead>
+        <tr>
+            <th>{% trans "Предмет" %}</th>
+            <th>{% trans "Преподаватели" %}</th>
+            <th>{% trans "Действие" %}</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in data %}
+            <tr>
+                <td>{{ row.subject.name }}</td>
+                <td>{{ row.teacher_names }}</td>
+                <td>
+                    <button type="button" class="open-modal-btn" data-subject-id="{{ row.subject.pk }}">
+                        {% trans "Перевестись" %}
+                    </button>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p>{% trans "Вы пока не состоите ни в одной предметной группе." %}</p>
+{% endif %}
+
+<p>
+    <a href="{% url 'portal:login' %}?logout=1">
+        {% trans "Выйти" %}
+    </a>
+</p>
+
+{% for row in data %}
+    <div id="modal-{{ row.subject.pk }}" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" data-subject-id="{{ row.subject.pk }}">&times;</span>
+            <div class="modal-header">
+                <h2>
+                    {% blocktrans %}Перевести в другую группу по предмету: {{ subj_name }}{% endblocktrans %}
+                    {% with subj_name=row.subject.name %}
+                    {% endwith %}
+                </h2>
+            </div>
+            <table>
+                <thead>
+                <tr>
+                    <th>{% trans "Преподаватели" %}</th>
+                    <th>{% trans "Количество студентов" %}</th>
+                    <th>{% trans "Действие" %}</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for grp in row.all_groups %}
+                    <tr>
+                        <td>{{ grp.get_teacher_names }}</td>
+                        <td>{{ grp.students.count }}</td>
+                        <td>
+                            {% if row.current_group and grp.pk == row.current_group.pk %}
+                                <em>{% trans "Вы состоите в этой группе" %}</em>
+                            {% elif row.has_pending %}
+                                <em style="color: orange;">{% trans "Заявка в обработке" %}</em>
+                            {% else %}
+                                <button type="button" class="do-transfer-btn"
+                                        data-subject-id="{{ row.subject.pk }}" data-group-id="{{ grp.pk }}">
+                                    {% trans "Перевестись" %}
+                                </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+
+
+            <div id="error-{{ row.subject.pk }}" class="error-message"></div>
+        </div>
+    </div>
+{% endfor %}
+
+<div id="success-popup" class="modal-overlay">
+    <div class="modal-content popup-success">
+        <span class="modal-close" id="success-close">&times;</span>
+        <p id="success-message"></p>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.open-modal-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                const subjId = this.getAttribute('data-subject-id');
+                const modal = document.getElementById(`modal-${subjId}`);
+                if (modal) {
+                    modal.style.display = 'flex';
+                }
+            });
+        });
+
+        document.querySelectorAll('.modal-close').forEach(function (span) {
+            span.addEventListener('click', function () {
+                const subjId = this.getAttribute('data-subject-id');
+                const modal = document.getElementById(`modal-${subjId}`);
+                if (modal) {
+                    modal.style.display = 'none';
+                }
+            });
+        });
+
+        document.querySelectorAll('.modal-overlay').forEach(function (overlay) {
+            overlay.addEventListener('click', function (e) {
+                if (e.target === overlay) {
+                    overlay.style.display = 'none';
+                }
+            });
+        });
+
+        document.getElementById('success-close').addEventListener('click', function () {
+            document.getElementById('success-popup').style.display = 'none';
+        });
+
+        document.getElementById('success-popup').addEventListener('click', function (e) {
+            if (e.target === this) {
+                this.style.display = 'none';
+            }
+        });
+
+        document.querySelectorAll('.do-transfer-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                const subjId = this.getAttribute('data-subject-id');
+                const grpId = this.getAttribute('data-group-id');
+                const url = `/transfer/${subjId}/`;
+
+                function getCookie(name) {
+                    let cookieValue = null;
+                    if (document.cookie && document.cookie !== '') {
+                        const cookies = document.cookie.split(';');
+                        for (let i = 0; i < cookies.length; i++) {
+                            const cookie = cookies[i].trim();
+                            if (cookie.startsWith(name + '=')) {
+                                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                                break;
+                            }
+                        }
+                    }
+                    return cookieValue;
+                }
+
+                const csrftoken = getCookie('csrftoken');
+
+                const errorDiv = document.getElementById(`error-${subjId}`);
+                if (errorDiv) {
+                    errorDiv.style.display = 'none';
+                    errorDiv.textContent = '';
+                }
+
+                const formData = new FormData();
+                formData.append('new_group', grpId);
+
+                fetch(url, {
+                    method: 'POST',
+                    headers: {'X-CSRFToken': csrftoken},
+                    body: formData,
+                })
+                    .then(function (response) {
+                        if (!response.ok) {
+                            return response.json().then(data => {
+                                throw new Error(data.message || '{% trans "Неизвестная ошибка" %}');
+                            });
+                        }
+                        return response.json();
+                    })
+                    .then(function (data) {
+                        if (data.status === 'success') {
+                            const modal = document.getElementById(`modal-${subjId}`);
+                            const errorDiv = document.getElementById(`error-${subjId}`);
+                            if (modal) {
+                                modal.style.display = 'none';
+                            }
+                            if (errorDiv) {
+                                errorDiv.style.display = 'none';
+                                errorDiv.textContent = '';
+                            }
+
+                            const successPopup = document.getElementById('success-popup');
+                            const messageEl = document.getElementById('success-message');
+                            messageEl.textContent = data.message;
+                            successPopup.style.display = 'flex';
+
+                        } else if (data.status === 'pending') {
+                            if (errorDiv) {
+                                errorDiv.textContent = data.message;
+                                errorDiv.style.display = 'block';
+                            }
+                        } else {
+                            throw new Error(data.message || '{% trans "Неизвестная ошибка" %}');
+                        }
+                    })
+                    .catch(function (err) {
+                        const errorDiv = document.getElementById(`error-${subjId}`);
+                        if (errorDiv) {
+                            errorDiv.textContent = err.message;
+                            errorDiv.style.display = 'block';
+                        }
+                    });
+            });
+        });
+    });
+</script>
+</body>
+</html>

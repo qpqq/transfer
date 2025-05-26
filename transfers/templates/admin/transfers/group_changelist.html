@@ -1,0 +1,18 @@
+{% extends "admin/change_list.html" %}
+{% load i18n %}
+
+{% block object-tools %}
+    <style>
+        .import-file {
+            margin-bottom: 20px;
+        }
+    </style>
+
+    {{ block.super }}
+
+    <li class="import-file">
+        <a class="addlink" href="{% url 'admin:transfers_group_import' %}">
+            {% trans "Импорт групп из файла" %}
+        </a>
+    </li>
+{% endblock %}

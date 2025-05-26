@@ -1,0 +1,25 @@
+{% load i18n %}
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>{% trans "Вход студента" %}</title>
+</head>
+
+<body>
+<h1>{% trans "Введите ваш e-mail" %}</h1>
+<form action="" method="post" novalidate>
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <p>
+        {{ form.email.label_tag }}<br>
+        {{ form.email }}<br>
+        {% for err in form.email.errors %}
+            <span style="color: red;">{{ err }}</span><br>
+        {% endfor %}
+    </p>
+    <button type="submit">{% trans "Войти" %}</button>
+</form>
+</body>
+</html>

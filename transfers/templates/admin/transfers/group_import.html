@@ -1,0 +1,47 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+    <style>
+        .submit-row {
+            padding: 8px;
+        }
+    </style>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const fileInput = document.querySelector('input[type="file"]');
+            const submitBtn = document.getElementById('submit-btn');
+
+            if (fileInput && submitBtn) {
+                fileInput.addEventListener('change', function () {
+                    submitBtn.disabled = !fileInput.files.length;
+                });
+            }
+        });
+    </script>
+
+    <div class="app-transfers module">
+        <h1>{% trans "Импорт групп" %}</h1>
+
+        <form action="" method="post" enctype="multipart/form-data" novalidate>
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+            <table>
+                <tr>
+                    <th>{{ form.file.label_tag }}</th>
+                    <td>
+                        {{ form.file }}<br/>
+                        {% if form.file.help_text %}
+                            <p class="help">{{ form.file.help_text }}</p>
+                        {% endif %}
+                    </td>
+                </tr>
+            </table>
+            <div class="submit-row">
+                <input type="submit" id="submit-btn" value="{% trans 'Загрузить и импортировать' %}" class="default"
+                       disabled/>
+            </div>
+        </form>
+    </div>
+{% endblock %}
