@@ -6,7 +6,74 @@ from django.urls import path
 from django.utils.translation import gettext_lazy as _
 
 from .forms import StudentImportForm, GroupImportForm
-from .models import Group, Teacher, Student, Subject, SubjectGroup, TransferRequest
+from .models import Faculty, Department, Group, Teacher, Student, Subject, SubjectGroup, TransferRequest
+
+
+@admin.register(Faculty)
+class FacultyAdmin(admin.ModelAdmin):
+    list_display = ('name',)
+    search_fields = ('name',)
+
+
+@admin.register(Department)
+class DepartmentAdmin(admin.ModelAdmin):
+    list_display = ('name',)
+    search_fields = ('name',)
+    ordering = ['name']
+
+
+@admin.register(Group)
+class GroupAdmin(admin.ModelAdmin):
+    list_display = (
+        'name', 'code', 'number', 'faculty',
+        'stream', 'education_system', 'index',
+        'department', 'archive'
+    )
+    list_filter = ('education_system', 'archive')
+    search_fields = ('name', 'code', 'faculty__name', 'department__name')
+
+    change_list_template = 'administration/group_changelist.html'
+
+    def get_urls(self):
+        urls = super().get_urls()
+
+        custom_urls = [
+            path('import/', self.admin_site.admin_view(self.import_view), name='administration_group_import')
+        ]
+
+        return custom_urls + urls
+
+    def import_view(self, request):
+        if request.method == 'POST':
+            form = GroupImportForm(request.POST, request.FILES)
+
+            if form.is_valid():
+                ods_file = form.cleaned_data['file']
+
+                try:
+                    created, updated, skipped = GroupImportForm.parse_and_save_groups_from_ods(ods_file)
+
+                    self.message_user(
+                        request,
+                        f'Импорт групп завершён: создано {created}, обновлено {updated}, пропущено {skipped}.',
+                        level=messages.SUCCESS
+                    )
+
+                except Exception as e:
+                    self.message_user(request, f'Ошибка: {e}', level=messages.ERROR)
+
+                return redirect('..')
+
+        else:
+            form = GroupImportForm()
+
+        context = {
+            **self.admin_site.each_context(request),
+            'opts': self.model._meta,
+            'form': form,
+        }
+
+        return render(request, 'administration/group_import.html', context)
 
 
 @admin.register(Student)
@@ -57,60 +124,6 @@ class StudentAdmin(admin.ModelAdmin):
         }
 
         return render(request, 'administration/student_import.html', context)
-
-
-@admin.register(Group)
-class GroupAdmin(admin.ModelAdmin):
-    list_display = (
-        'name', 'code', 'number', 'faculty',
-        'stream', 'education_system', 'index',
-        'department', 'archive'
-    )
-    list_filter = ('education_system', 'archive')
-    search_fields = ('name', 'code', 'faculty', 'department')
-
-    change_list_template = 'administration/group_changelist.html'
-
-    def get_urls(self):
-        urls = super().get_urls()
-
-        custom_urls = [
-            path('import/', self.admin_site.admin_view(self.import_view), name='administration_group_import')
-        ]
-
-        return custom_urls + urls
-
-    def import_view(self, request):
-        if request.method == 'POST':
-            form = GroupImportForm(request.POST, request.FILES)
-
-            if form.is_valid():
-                ods_file = form.cleaned_data['file']
-
-                try:
-                    created, updated, skipped = GroupImportForm.parse_and_save_groups_from_ods(ods_file)
-
-                    self.message_user(
-                        request,
-                        f'Импорт групп завершён: создано {created}, обновлено {updated}, пропущено {skipped}.',
-                        level=messages.SUCCESS
-                    )
-
-                except Exception as e:
-                    self.message_user(request, f'Ошибка: {e}', level=messages.ERROR)
-
-                return redirect('..')
-
-        else:
-            form = GroupImportForm()
-
-        context = {
-            **self.admin_site.each_context(request),
-            'opts': self.model._meta,
-            'form': form,
-        }
-
-        return render(request, 'administration/group_import.html', context)
 
 
 @admin.register(Teacher)

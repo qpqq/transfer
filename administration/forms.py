@@ -6,7 +6,7 @@ from django.core.validators import FileExtensionValidator
 from django.db import transaction
 from django.utils.translation import gettext_lazy as _
 
-from .models import Group, Student
+from .models import Faculty, Department, Group, Student
 
 
 class StudentImportForm(forms.Form):
@@ -159,7 +159,7 @@ class GroupImportForm(forms.Form):
             for _, row in data.iterrows():
                 def get_cell(col_idx):
                     v = row[col_idx]
-                    return '' if pd.isna(v) else str(v).strip()
+                    return None if pd.isna(v) else str(v).strip()
 
                 archive_text = get_cell(idx_archive)
                 name = get_cell(idx_name)
@@ -174,6 +174,14 @@ class GroupImportForm(forms.Form):
                 if not name or not code_text:
                     skipped += 1
                     continue
+
+                faculty_obj = None
+                if faculty:
+                    faculty_obj, _ = Faculty.objects.get_or_create(name=faculty)
+
+                department_obj = None
+                if dept:
+                    department_obj, _ = Department.objects.get_or_create(name=dept)
 
                 # Преобразуем код в int (убрав пробелы/неразрывные пробелы)
                 try:
@@ -193,14 +201,11 @@ class GroupImportForm(forms.Form):
                     except ValueError:
                         number = None
 
-                edu = ''
+                edu = None
                 if edu_text.lower() == 'очная':
                     edu = Group.EducationSystem.regular
                 elif edu_text.lower() == 'заочная':
                     edu = Group.EducationSystem.online
-
-                index_val = index_text if index_text else ''
-                department = dept if dept else ''
 
                 try:
                     grp = Group.objects.get(code=code)
@@ -215,8 +220,8 @@ class GroupImportForm(forms.Form):
                     if grp.number != number:
                         grp.number = number
                         changed = True
-                    if grp.faculty != faculty:
-                        grp.faculty = faculty
+                    if grp.faculty_id != (faculty_obj.id if faculty_obj else None):
+                        grp.faculty = faculty_obj
                         changed = True
                     if grp.stream != stream:
                         grp.stream = stream
@@ -224,11 +229,11 @@ class GroupImportForm(forms.Form):
                     if grp.education_system != edu:
                         grp.education_system = edu
                         changed = True
-                    if grp.index != index_val:
-                        grp.index = index_val
+                    if grp.index != index_text:
+                        grp.index = index_text
                         changed = True
-                    if grp.department != department:
-                        grp.department = department
+                    if grp.department_id != (department_obj.id if department_obj else None):
+                        grp.department = department_obj
                         changed = True
 
                     if changed:
@@ -241,11 +246,11 @@ class GroupImportForm(forms.Form):
                         name=name,
                         code=code,
                         number=number,
-                        faculty=faculty,
+                        faculty=faculty_obj,
                         stream=stream,
                         education_system=edu,
-                        index=index_val,
-                        department=department
+                        index=index_text,
+                        department=department_obj
                     ))
                     created += 1
 

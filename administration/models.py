@@ -3,10 +3,34 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 
+class Faculty(models.Model):
+    class Meta:
+        verbose_name = _('Факультет')
+        verbose_name_plural = _('Факультеты')
+        ordering = ['name']
+
+    name = models.CharField(_('Наименование'))
+
+    def __str__(self):
+        return f'{self.name}'
+
+
+class Department(models.Model):
+    class Meta:
+        verbose_name = _('Кафедра')
+        verbose_name_plural = _('Кафедры')
+
+    name = models.CharField(_('Наименование'))
+
+    def __str__(self):
+        return f'{self.name}'
+
+
 class Group(models.Model):
     class Meta:
         verbose_name = _('Учебная группа')
         verbose_name_plural = _('Учебные группы')
+        ordering = ['-code']
 
     class EducationSystem(models.TextChoices):
         regular = 'R', _('Очная')
@@ -16,7 +40,13 @@ class Group(models.Model):
     name = models.CharField(_('Наименование'))
     code = models.PositiveIntegerField(_('Код'), unique=True)
     number = models.PositiveIntegerField(_('Номер группы'), blank=True, null=True)
-    faculty = models.CharField(_('Физтех-школа (факультет)'), blank=True, null=True)
+    faculty = models.ForeignKey(
+        Faculty,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        verbose_name=_('Физтех-школа (факультет)')
+    )
     stream = models.CharField(_('Учебный поток'), blank=True, null=True)
     education_system = models.CharField(
         max_length=2,
@@ -24,7 +54,13 @@ class Group(models.Model):
         verbose_name=_('Форма обучения')
     )
     index = models.CharField(_('Индекс группы'), blank=True, null=True)
-    department = models.CharField(_('Кафедра'), blank=True, null=True)
+    department = models.ForeignKey(
+        Department,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        verbose_name=_('Кафедра')
+    )
 
     def __str__(self):
         return f'{self.name}'
@@ -34,6 +70,7 @@ class Student(models.Model):
     class Meta:
         verbose_name = _('Студент')
         verbose_name_plural = _('Студенты')
+        ordering = ['full_name']
 
     class Sex(models.TextChoices):
         male = 'M', _('Мужской')
@@ -61,6 +98,7 @@ class Teacher(models.Model):
     class Meta:
         verbose_name = _('Преподаватель')
         verbose_name_plural = _('Преподаватели')
+        ordering = ['full_name']
 
     full_name = models.CharField(_('Преподаватель'))
     email = models.EmailField(_('Адрес электронной почты'))  # TODO unique=True
@@ -73,6 +111,7 @@ class Subject(models.Model):
     class Meta:
         verbose_name = _('Предмет')
         verbose_name_plural = _('Предметы')
+        ordering = ['name']
 
     name = models.CharField(_('Предмет'))
 
@@ -84,6 +123,7 @@ class SubjectGroup(models.Model):
     class Meta:
         verbose_name = _('Предметная группа')
         verbose_name_plural = _('Предметные группы')
+        ordering = ['subject']
 
     subject = models.ForeignKey(
         Subject,
@@ -119,7 +159,7 @@ class TransferRequest(models.Model):
 
     student = models.ForeignKey(
         'Student',
-        on_delete=models.CASCADE,
+        on_delete=models.CASCADE,  # TODO удалять?
         related_name='transfer_requests',
         verbose_name=_('Студент')
     )
