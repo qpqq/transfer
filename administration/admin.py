@@ -78,11 +78,21 @@ class GroupAdmin(admin.ModelAdmin):
 
 @admin.register(Student)
 class StudentAdmin(admin.ModelAdmin):
-    list_display = ('full_name', 'group', 'sex', 'email')
+    list_display = ('full_name', 'get_groups', 'get_departments', 'year', 'sex', 'birthdate', 'email')
     list_filter = ('sex',)
-    search_fields = ('full_name', 'group__name', 'email')
+    search_fields = ('full_name', 'groups__name', 'departments__name', 'email')
+    filter_horizontal = ('groups', 'departments')
 
     change_list_template = 'administration/student_changelist.html'
+
+    def get_groups(self, obj):
+        return ', '.join([t.name for t in obj.groups.all()])
+
+    def get_departments(self, obj):
+        return ', '.join([t.name for t in obj.departments.all()])
+
+    get_groups.short_description = 'Группы'
+    get_departments.short_description = 'Кафедры'
 
     def get_urls(self):
         urls = super().get_urls()

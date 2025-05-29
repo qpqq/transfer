@@ -1,4 +1,5 @@
 import io
+from datetime import datetime
 
 import pandas as pd
 from django import forms
@@ -41,7 +42,10 @@ class StudentImportForm(forms.Form):
         try:
             idx_full_name = header.index('Студент')
             idx_group = header.index('Группа')
+            idx_department = header.index('Кафедра')
+            idx_year = header.index('Курс')
             idx_sex = header.index('Пол')
+            idx_birthdate = header.index('Дата рождения')
             idx_email = header.index('Адрес электронной почты физтех')
         except ValueError as e:
             raise ValueError(f'В заголовке отсутствует колонка: {e}')
@@ -57,12 +61,29 @@ class StudentImportForm(forms.Form):
 
                 full_name = get_cell(idx_full_name)
                 group_name = get_cell(idx_group)
+                dept_name = get_cell(idx_department)
+                year_text = get_cell(idx_year)
                 sex_text = get_cell(idx_sex)
                 email = get_cell(idx_email)
+                birthdate_txt = get_cell(idx_birthdate)
 
                 if not full_name or not email:
                     skipped += 1
                     continue
+
+                dept_obj = None
+                if dept_name:
+                    dept_obj, _ = Department.objects.get_or_create(name=dept_name)
+
+                try:
+                    year = int(year_text)
+                except ValueError:
+                    year = None
+
+                try:
+                    birthdate = datetime.strptime(birthdate_txt, '%d.%m.%Y').date()
+                except (ValueError, TypeError):
+                    birthdate = None
 
                 sex = ''
                 if sex_text.lower() == 'мужской':
@@ -79,26 +100,38 @@ class StudentImportForm(forms.Form):
                     if stu.full_name != full_name:
                         stu.full_name = full_name
                         changed = True
-                    if stu.group_id != (group_obj.id if group_obj else None):
-                        stu.group = group_obj
-                        changed = True
                     if stu.sex != sex:
                         stu.sex = sex
                         changed = True
+                    if stu.year != year:
+                        stu.year = year
+                        changed = True
+                    if stu.birthdate != birthdate:
+                        stu.birthdate = birthdate
+                        changed = True
 
                     if changed:
-                        to_update.append(stu)
+                        stu.save()
                         updated += 1
 
+                    if group_obj:
+                        stu.groups.add(group_obj)
+                    if dept_obj:
+                        stu.departments.add(dept_obj)
+
                 except Student.DoesNotExist:
-                    to_create.append(
-                        Student(
-                            full_name=full_name,
-                            group=group_obj,
-                            sex=sex,
-                            email=email
-                        )
+                    stu = Student.objects.create(
+                        full_name=full_name,
+                        year=year,
+                        sex=sex,
+                        birthdate=birthdate,
+                        email=email
                     )
+
+                    if group_obj:
+                        stu.groups.add(group_obj)
+                    if dept_obj:
+                        stu.departments.add(dept_obj)
 
                     created += 1
 

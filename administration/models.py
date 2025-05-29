@@ -77,17 +77,23 @@ class Student(models.Model):
         female = 'F', _('Женский')
 
     full_name = models.CharField(_('Студент'))
-    group = models.ForeignKey(
+    groups = models.ManyToManyField(
         Group,
-        on_delete=models.SET_NULL,
-        null=True,
-        verbose_name=_('Группа')
+        verbose_name=_('Группы')
     )
+    departments = models.ManyToManyField(
+        Department,
+        blank=True,
+        verbose_name=_('Кафедры')
+    )
+    # faculty  # TODO в таблице краткое наименование, непонятно как его привязывать
+    year = models.IntegerField(_('Курс'))
     sex = models.CharField(
         max_length=2,
         choices=Sex.choices,
         verbose_name=_('Пол')
     )
+    birthdate = models.DateField(_('Дата рождения'))
     email = models.EmailField(_('Адрес электронной почты физтех'))  # TODO unique=True
 
     def __str__(self):
