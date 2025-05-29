@@ -15,13 +15,13 @@ class StudentAdmin(admin.ModelAdmin):
     list_filter = ('sex',)
     search_fields = ('full_name', 'group__name', 'email')
 
-    change_list_template = 'admin/transfers/student_changelist.html'
+    change_list_template = 'administration/student_changelist.html'
 
     def get_urls(self):
         urls = super().get_urls()
 
         custom_urls = [
-            path('import/', self.admin_site.admin_view(self.import_view), name='transfers_student_import')
+            path('import/', self.admin_site.admin_view(self.import_view), name='administration_student_import')
         ]
 
         return custom_urls + urls
@@ -56,7 +56,7 @@ class StudentAdmin(admin.ModelAdmin):
             'form': form,
         }
 
-        return render(request, 'admin/transfers/student_import.html', context)
+        return render(request, 'administration/student_import.html', context)
 
 
 @admin.register(Group)
@@ -69,12 +69,14 @@ class GroupAdmin(admin.ModelAdmin):
     list_filter = ('education_system', 'archive')
     search_fields = ('name', 'code', 'faculty', 'department')
 
-    change_list_template = 'admin/transfers/group_changelist.html'
+    change_list_template = 'administration/group_changelist.html'
 
     def get_urls(self):
         urls = super().get_urls()
 
-        custom_urls = [path('import/', self.admin_site.admin_view(self.import_view), name='transfers_group_import')]
+        custom_urls = [
+            path('import/', self.admin_site.admin_view(self.import_view), name='administration_group_import')
+        ]
 
         return custom_urls + urls
 
@@ -108,7 +110,7 @@ class GroupAdmin(admin.ModelAdmin):
             'form': form,
         }
 
-        return render(request, 'admin/transfers/group_import.html', context)
+        return render(request, 'administration/group_import.html', context)
 
 
 @admin.register(Teacher)
