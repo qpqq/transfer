@@ -5,8 +5,8 @@ from django.utils.translation import gettext_lazy as _
 
 class Group(models.Model):
     class Meta:
-        verbose_name = _('Учебная Группа')
-        verbose_name_plural = _('Учебные Группы')
+        verbose_name = _('Учебная группа')
+        verbose_name_plural = _('Учебные группы')
 
     class EducationSystem(models.TextChoices):
         regular = 'R', _('Очная')
