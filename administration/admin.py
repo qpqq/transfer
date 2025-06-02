@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib import messages
 from django.db import transaction
 from django.shortcuts import redirect, render
-from django.urls import path
+from django.urls import path, reverse
 from django.utils.translation import gettext_lazy as _
 
 from .forms import StudentImportForm, GroupImportForm
@@ -144,14 +144,48 @@ class TeacherAdmin(admin.ModelAdmin):
 
 @admin.register(Subject)
 class SubjectAdmin(admin.ModelAdmin):
-    list_display = ('name',)
-    search_fields = ('name',)
+    list_display = ('name', 'department', 'faculty', 'year')
+    search_fields = ('name', 'department__name', 'faculty__name', 'year')
+
+    change_form_template = 'administration/subject_change_form.html'
+
+    def get_urls(self):
+        custom_urls = [
+            path(
+                '<int:object_id>/make-groups/',
+                self.admin_site.admin_view(self.make_groups),
+                name='administration_subject_make_groups',
+            ),
+        ]
+        return custom_urls + super().get_urls()
+
+    def make_groups(self, request, object_id):
+        subject = self.get_object(request, object_id)
+        missing = []
+        if not subject.year:
+            missing.append('курс')
+        if not subject.faculty:
+            missing.append('факультет')
+        if not subject.department:
+            missing.append('кафедра')
+
+        if missing:
+            messages.warning(request, f'Не указаны: {', '.join(missing)}')
+        else:
+            subject.create_subject_groups()
+            messages.success(request, 'Предметные группы успешно сформированы')
+        return redirect(
+            reverse('admin:%s_%s_change' % (
+                subject._meta.app_label,
+                subject._meta.model_name,
+            ), args=[object_id])
+        )
 
 
 @admin.register(SubjectGroup)
 class SubjectGroupAdmin(admin.ModelAdmin):
-    list_display = ('subject', 'name', 'get_teachers')
-    search_fields = ('subject__name', 'name', 'teachers__full_name')
+    list_display = ('subject', 'get_teachers')
+    search_fields = ('subject__name', 'teachers__full_name')
     list_filter = ('subject', 'teachers')
     filter_horizontal = ('teachers', 'students')
 
@@ -165,7 +199,7 @@ class SubjectGroupAdmin(admin.ModelAdmin):
 class TransferRequestAdmin(admin.ModelAdmin):
     list_display = ('student', 'subject', 'from_group', 'to_group', 'created_at')
     list_filter = ('subject', 'created_at')
-    search_fields = ('student__full_name', 'subject__name', 'from_group__name', 'to_group__name')
+    search_fields = ('student__full_name', 'subject__name')
     actions = ['approve_requests', 'reject_requests']
 
     @admin.action(description=_('Одобрить выделенные заявки'))

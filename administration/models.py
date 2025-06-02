@@ -1,4 +1,6 @@
-from django.db import models
+from collections import defaultdict
+
+from django.db import models, transaction
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
@@ -120,6 +122,43 @@ class Subject(models.Model):
         ordering = ['name']
 
     name = models.CharField(_('Предмет'))
+    department = models.ForeignKey(
+        Department,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name=_('Кафедра')
+    )
+    faculty = models.ForeignKey(
+        Faculty,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name=_('Факультет')
+    )
+    year = models.IntegerField(_('Курс'), blank=True, null=True)
+
+    def create_subject_groups(self):
+        qs = Student.objects.all()
+        qs = qs.filter(year=self.year) if self.year is not None else qs
+        if self.faculty is not None:
+            qs = qs.filter(groups__faculty=self.faculty)
+        if self.department is not None:
+            qs = qs.filter(departments=self.department)
+        qs = qs.distinct().prefetch_related('groups')
+
+        groups_map = defaultdict(list)
+        for student in qs:
+            for grp in student.groups.all():
+                if self.faculty and grp.faculty != self.faculty:
+                    continue
+                groups_map[grp].append(student)
+
+        with transaction.atomic():
+            # SubjectGroup.objects.filter(subject=self).delete()  # TODO удалить старые предметные группы?
+            for grp, students in groups_map.items():
+                sg = SubjectGroup.objects.create(subject=self)
+                sg.students.add(*students)
 
     def __str__(self):
         return self.name
@@ -137,7 +176,6 @@ class SubjectGroup(models.Model):
         related_name='subject_groups',
         verbose_name=_('Предмет')
     )
-    name = models.CharField(_('Название группы'), blank=True, null=True)
     teachers = models.ManyToManyField(
         Teacher,
         blank=True,
@@ -149,8 +187,8 @@ class SubjectGroup(models.Model):
         verbose_name=_('Студенты')
     )
 
-    def __str__(self):
-        return f'{self.subject.name}{f' — {self.name}' if self.name else ''}'
+    # def __str__(self):
+    #     return f'{self.subject.name}'
 
     def get_teacher_names(self, default=_('--')):
         qs = self.teachers.all()
