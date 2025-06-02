@@ -197,8 +197,8 @@ class SubjectGroupAdmin(admin.ModelAdmin):
 
 @admin.register(TransferRequest)
 class TransferRequestAdmin(admin.ModelAdmin):
-    list_display = ('student', 'subject', 'from_group', 'to_group', 'created_at')
-    list_filter = ('subject', 'created_at')
+    list_display = ('code', 'student', 'subject', 'from_group', 'to_group', 'created_at')
+    list_filter = ('created_at',)
     search_fields = ('student__full_name', 'subject__name')
     actions = ['approve_requests', 'reject_requests']
 

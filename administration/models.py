@@ -201,6 +201,13 @@ class TransferRequest(models.Model):
         verbose_name_plural = _('Заявки на перевод')
         ordering = ['-created_at']
 
+    code = models.CharField(
+        _('Код заявки'),
+        max_length=20,
+        unique=True,
+        editable=False,
+        help_text=_('Код заявки, формируется автоматически')
+    )
     student = models.ForeignKey(
         'Student',
         on_delete=models.CASCADE,  # TODO удалять?
@@ -230,6 +237,30 @@ class TransferRequest(models.Model):
         default=timezone.now,
         editable=False
     )
+
+    def save(self, *args, **kwargs):
+        if not self.code:
+            today_str = timezone.localtime(self.created_at).strftime('%d%m%Y')
+            prefix = f'{today_str}'
+
+            with transaction.atomic():
+                # Сколько уже записей с таким префиксом?
+                last = (
+                    TransferRequest.objects
+                    .filter(code__startswith=prefix)
+                    .order_by('-code')
+                    .first()
+                )
+                if last is None:
+                    next_num = 1
+                else:
+                    last_seq = int(last.code.split('-')[-1])
+                    next_num = last_seq + 1
+
+                suffix = str(next_num).zfill(4)
+                self.code = f'{prefix}-{suffix}'
+
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f'{self.student.full_name}: {self.from_group} → {self.to_group} ({self.created_at:%Y-%m-%d %H:%M})'
