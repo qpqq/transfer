@@ -202,6 +202,12 @@ class TransferRequestAdmin(admin.ModelAdmin):
     search_fields = ('student__full_name', 'subject__name')
     actions = ['approve_requests', 'reject_requests']
 
+    def save_model(self, request, obj, form, change):
+        if 'status' in form.changed_data:
+            obj._modified_by = request.user
+
+        super().save_model(request, obj, form, change)
+
     @admin.action(description=_('Одобрить выделенные заявки'))
     def approve_requests(self, request, queryset):
         approved = 0

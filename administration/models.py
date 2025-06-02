@@ -1,5 +1,6 @@
 from collections import defaultdict
 
+from django.conf import settings
 from django.db import models, transaction
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -35,8 +36,8 @@ class Group(models.Model):
         ordering = ['-code']
 
     class EducationSystem(models.TextChoices):
-        regular = 'R', _('Очная')
-        online = 'O', _('Заочная')
+        regular = 'regular', _('Очная')
+        online = 'online', _('Заочная')
 
     archive = models.BooleanField(_('Архивная'))
     name = models.CharField(_('Наименование'))
@@ -51,7 +52,6 @@ class Group(models.Model):
     )
     stream = models.CharField(_('Учебный поток'), blank=True, null=True)
     education_system = models.CharField(
-        max_length=2,
         choices=EducationSystem.choices,
         verbose_name=_('Форма обучения')
     )
@@ -201,9 +201,13 @@ class TransferRequest(models.Model):
         verbose_name_plural = _('Заявки на перевод')
         ordering = ['-created_at']
 
+    class Status(models.TextChoices):
+        CREATED = 'created', _('Создано')
+        APPROVED = 'approved', _('Одобрено')
+        REJECTED = 'rejected', _('Отклонено')
+
     code = models.CharField(
         _('Код заявки'),
-        max_length=20,
         unique=True,
         editable=False,
         help_text=_('Код заявки, формируется автоматически')
@@ -232,6 +236,11 @@ class TransferRequest(models.Model):
         related_name='incoming_requests',
         verbose_name=_('В группу')
     )
+    status = models.CharField(
+        _('Статус'),
+        choices=Status.choices,
+        default=Status.CREATED
+    )
     created_at = models.DateTimeField(
         _('Время подачи заявления'),
         default=timezone.now,
@@ -239,6 +248,7 @@ class TransferRequest(models.Model):
     )
 
     def save(self, *args, **kwargs):
+        # Создать уникальный человеко-читаемый код
         if not self.code:
             today_str = timezone.localtime(self.created_at).strftime('%d%m%Y')
             prefix = f'{today_str}'
@@ -260,7 +270,72 @@ class TransferRequest(models.Model):
                 suffix = str(next_num).zfill(4)
                 self.code = f'{prefix}-{suffix}'
 
+        is_new = self._state.adding
+        old_status = None
+
+        if not is_new:
+            prev = TransferRequest.objects.filter(pk=self.pk).only('status').first()
+            if prev:
+                old_status = prev.status
+
         super().save(*args, **kwargs)
+
+        new_status = self.status
+
+        if is_new or (old_status and old_status != new_status):
+            TransferRequestLog.objects.create(
+                transfer_request=self,
+                old_status=old_status or TransferRequest.Status.CREATED,
+                new_status=new_status,
+                performed_by=getattr(self, '_modified_by', None),
+                comment=getattr(self, '_status_comment', None)
+            )
 
     def __str__(self):
         return f'{self.student.full_name}: {self.from_group} → {self.to_group} ({self.created_at:%Y-%m-%d %H:%M})'
+
+
+class TransferRequestLog(models.Model):
+    class Meta:
+        verbose_name = _('История заявки')
+        verbose_name_plural = _('Истории заявок')
+        ordering = ['-timestamp']
+
+    transfer_request = models.ForeignKey(
+        TransferRequest,
+        on_delete=models.CASCADE,
+        related_name='logs',
+        verbose_name=_('Заявка на перевод')
+    )
+    timestamp = models.DateTimeField(
+        _('Время действия'),
+        default=timezone.now,
+        editable=False
+    )
+    old_status = models.CharField(
+        _('Старый статус'),
+        choices=TransferRequest.Status.choices
+    )
+    new_status = models.CharField(
+        _('Новый статус'),
+        choices=TransferRequest.Status.choices
+    )
+    performed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name=_('Кем выполнено')
+    )
+    comment = models.TextField(
+        _('Комментарий'),
+        null=True,
+        blank=True
+    )
+
+    def __str__(self):
+        return (
+            f'[{self.timestamp:%Y-%m-%d %H:%M}] '
+            f'{self.get_old_status_display()} → {self.get_new_status_display()}'
+            f'{f' ({self.performed_by})' if self.performed_by else ''}'
+        )
