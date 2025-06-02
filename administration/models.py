@@ -1,6 +1,7 @@
 from collections import defaultdict
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -300,6 +301,11 @@ class TransferRequest(models.Model):
                 performed_by=getattr(self, '_modified_by', None),
                 comment=getattr(self, '_status_comment', None)
             )
+
+    def clean(self):
+        super().clean()
+        if self.status == TransferRequest.Status.REJECTED and not self.comment:
+            raise ValidationError({'comment': _('Комментарий обязателен при отклонении заявки')})
 
     def __str__(self):
         return f'{self.student.full_name}: {self.from_group} → {self.to_group}'

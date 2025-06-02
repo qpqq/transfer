@@ -199,7 +199,7 @@ class TransferRequestAdmin(admin.ModelAdmin):
     list_display = ('code', 'student', 'subject', 'from_group', 'to_group', 'status', 'created_at')
     list_filter = ('created_at',)
     search_fields = ('student__full_name', 'subject__name')
-    actions = ['approve_requests', 'reject_requests']
+    actions = ['approve_requests']
 
     change_form_template = 'administration/transferrequest_change_form.html'
 
@@ -241,17 +241,4 @@ class TransferRequestAdmin(admin.ModelAdmin):
             request,
             _('Одобрено заявок: %(count)d') % {'count': approved},
             level=messages.SUCCESS
-        )
-
-    @admin.action(description=_('Отклонить выделенные заявки'))
-    def reject_requests(self, request, queryset):
-        count = queryset.count()
-
-        with transaction.atomic():
-            queryset.delete()
-
-        self.message_user(
-            request,
-            _('Отклонено заявок: %(count)d') % {'count': count},
-            level=messages.WARNING
         )
