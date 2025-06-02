@@ -241,6 +241,11 @@ class TransferRequest(models.Model):
         choices=Status.choices,
         default=Status.CREATED
     )
+    comment = models.TextField(
+        _('Комментарий'),
+        null=True,
+        blank=True
+    )
     created_at = models.DateTimeField(
         _('Время подачи заявления'),
         default=timezone.now,
