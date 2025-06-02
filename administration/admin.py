@@ -186,7 +186,6 @@ class SubjectAdmin(admin.ModelAdmin):
 class SubjectGroupAdmin(admin.ModelAdmin):
     list_display = ('subject', 'get_teachers')
     search_fields = ('subject__name', 'teachers__full_name')
-    list_filter = ('subject', 'teachers')
     filter_horizontal = ('teachers', 'students')
 
     def get_teachers(self, obj):

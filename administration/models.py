@@ -136,7 +136,7 @@ class Subject(models.Model):
         blank=True,
         verbose_name=_('Факультет')
     )
-    year = models.IntegerField(_('Курс'), blank=True, null=True)
+    year = models.IntegerField(_('Курс'))
 
     def create_subject_groups(self):
         qs = Student.objects.all()
@@ -161,7 +161,12 @@ class Subject(models.Model):
                 sg.students.add(*students)
 
     def __str__(self):
-        return self.name
+        return (
+            f'{self.name}'
+            f'{f' - {self.department}' if self.department else ''}'
+            f'{f' - {self.faculty}' if self.faculty else ''}'
+            f' - {self.year} курс'
+        )
 
 
 class SubjectGroup(models.Model):
@@ -187,12 +192,12 @@ class SubjectGroup(models.Model):
         verbose_name=_('Студенты')
     )
 
-    # def __str__(self):
-    #     return f'{self.subject.name}'
-
     def get_teacher_names(self, default=_('--')):
         qs = self.teachers.all()
         return ', '.join([t.full_name for t in qs]) if qs else default
+
+    def __str__(self):
+        return f'{self.subject.name}{f' - {self.get_teacher_names('')}' if self.get_teacher_names(None) else ''}'
 
 
 class TransferRequest(models.Model):
@@ -297,7 +302,7 @@ class TransferRequest(models.Model):
             )
 
     def __str__(self):
-        return f'{self.student.full_name}: {self.from_group} → {self.to_group} ({self.created_at:%d-%m-%Y %H:%M })'
+        return f'{self.student.full_name}: {self.from_group} → {self.to_group}'
 
 
 class TransferRequestLog(models.Model):
