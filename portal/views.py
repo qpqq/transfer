@@ -151,7 +151,8 @@ def transfer_view(request, subject_pk):
         student=student,
         subject=subject,
         from_group=from_group,
-        to_group=to_group
+        to_group=to_group,
+        status=TransferRequest.Status.WAITING_TEACHER  # TODO
     )
 
     return JsonResponse({

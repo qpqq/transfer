@@ -230,7 +230,7 @@ class TransferRequestAdmin(admin.ModelAdmin):
                 from_grp.students.remove(student)
                 to_grp.students.add(student)
 
-                req.status = TransferRequest.Status.APPROVED  # TODO не меняется
+                # req.status = TransferRequest.Status.APPROVED  # TODO не меняется
                 approved += 1
 
         self.message_user(

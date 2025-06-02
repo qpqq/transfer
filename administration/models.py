@@ -212,8 +212,10 @@ class TransferRequest(models.Model):
         ordering = ['-created_at']
 
     class Status(models.TextChoices):
-        CREATED = 'created', _('Создано')
-        APPROVED = 'approved', _('Одобрено')
+        PENDING = 'pending', _('В очереди')
+        WAITING_TEACHER = 'waiting_teacher', _('Ждет одобрения преподавателем')
+        WAITING_ADMIN = 'waiting_admin', _('Ждет одобрения администратором')
+        COMPLETED = 'completed', _('Выполнена')
         REJECTED = 'rejected', _('Отклонено')
 
     code = models.CharField(
@@ -250,7 +252,8 @@ class TransferRequest(models.Model):
     status = models.CharField(
         _('Статус'),
         choices=Status.choices,
-        default=Status.CREATED
+        default=Status.PENDING,
+        editable=False
     )
     comment = models.TextField(
         _('Комментарий'),
@@ -301,7 +304,7 @@ class TransferRequest(models.Model):
         if is_new or (old_status and old_status != new_status):
             TransferRequestLog.objects.create(
                 transfer_request=self,
-                old_status=old_status or TransferRequest.Status.CREATED,
+                old_status=old_status or TransferRequest.Status.PENDING,
                 new_status=new_status,
                 performed_by=getattr(self, '_modified_by', None),
                 comment=getattr(self, '_status_comment', None)
