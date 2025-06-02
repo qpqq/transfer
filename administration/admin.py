@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib import messages
 from django.db import transaction
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect, render, get_object_or_404
 from django.urls import path, reverse
 from django.utils.translation import gettext_lazy as _
 
@@ -197,16 +197,30 @@ class SubjectGroupAdmin(admin.ModelAdmin):
 
 @admin.register(TransferRequest)
 class TransferRequestAdmin(admin.ModelAdmin):
-    list_display = ('code', 'student', 'subject', 'from_group', 'to_group', 'created_at')
+    list_display = ('code', 'student', 'subject', 'from_group', 'to_group', 'status', 'created_at')
     list_filter = ('created_at',)
     search_fields = ('student__full_name', 'subject__name')
     actions = ['approve_requests', 'reject_requests']
 
+    change_form_template = 'administration/transferrequest_change_form.html'
+
     def save_model(self, request, obj, form, change):
-        if 'status' in form.changed_data:
+        if not change or 'status' in form.changed_data:
             obj._modified_by = request.user
 
         super().save_model(request, obj, form, change)
+
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        transfer_request = get_object_or_404(TransferRequest, pk=object_id)
+        logs = transfer_request.logs.all().order_by('-timestamp')
+
+        extra_context = extra_context or {}
+        extra_context['logs'] = logs
+
+        return super().change_view(
+            request, object_id, form_url,
+            extra_context=extra_context
+        )
 
     @admin.action(description=_('Одобрить выделенные заявки'))
     def approve_requests(self, request, queryset):

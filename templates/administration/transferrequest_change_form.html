@@ -1,0 +1,40 @@
+{% extends "admin/change_form.html" %}
+{% load i18n %}
+
+{% block submit_buttons_bottom %}
+    {{ block.super }}
+
+    <div class="module" style="padding-top: 8px;">
+        <h2>{% trans "История изменений статуса" %}</h2>
+        {% if logs %}
+            <ul style="list-style: none; padding-left: 0;">
+                {% for log in logs %}
+                    <li style="padding: 0.5em 0; border-bottom: 1px solid #e0e0e0;">
+                        <strong>{{ log.timestamp|date:"d-m-Y H:i" }}</strong>:
+
+                        {% if log.old_status == log.new_status %}
+                            {{ log.get_new_status_display }}
+                        {% else %}
+                            {{ log.get_old_status_display }} → {{ log.get_new_status_display }}
+                        {% endif %}
+
+                        {% if log.performed_by %}
+                            &mdash;
+                            {% if log.performed_by.get_full_name %}
+                                {{ log.performed_by.get_full_name }}
+                            {% else %}
+                                {{ log.performed_by.username }}
+                            {% endif %}
+                        {% endif %}
+
+                        {% if log.comment %}
+                            <br><em style="color: #777;">{{ log.comment }}</em>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p style="color: #777;">{% trans "Записей об изменении статуса ещё нет." %}</p>
+        {% endif %}
+    </div>
+{% endblock %}

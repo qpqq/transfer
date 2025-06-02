@@ -292,7 +292,7 @@ class TransferRequest(models.Model):
             )
 
     def __str__(self):
-        return f'{self.student.full_name}: {self.from_group} → {self.to_group} ({self.created_at:%Y-%m-%d %H:%M})'
+        return f'{self.student.full_name}: {self.from_group} → {self.to_group} ({self.created_at:%d-%m-%Y %H:%M })'
 
 
 class TransferRequestLog(models.Model):
@@ -335,7 +335,7 @@ class TransferRequestLog(models.Model):
 
     def __str__(self):
         return (
-            f'[{self.timestamp:%Y-%m-%d %H:%M}] '
+            f'[{self.timestamp:%d-%m-%Y %H:%M}] '
             f'{self.get_old_status_display()} → {self.get_new_status_display()}'
             f'{f' ({self.performed_by})' if self.performed_by else ''}'
         )
