@@ -57,14 +57,14 @@ def cabinet_view(request):
             .prefetch_related('teachers', 'students')
         )
 
-        has_pending = TransferRequest.objects.filter(student=student, subject=subj).exists()
+        transfer_request = TransferRequest.objects.filter(student=student, subject=subj).first()
 
         data.append({
             'subject': subj,
             'current_group': current_group,
             'teacher_names': current_group.get_teacher_names(),
             'all_groups': all_groups,
-            'has_pending': has_pending
+            'transfer_request': transfer_request
         })
 
     return render(request, 'portal/cabinet.html', {
@@ -73,7 +73,7 @@ def cabinet_view(request):
     })
 
 
-@require_http_methods(["POST"])
+@require_http_methods(['POST'])
 def transfer_view(request, subject_pk):
     student_pk = request.session.get('student_id')
     if not student_pk:
@@ -135,18 +135,16 @@ def transfer_view(request, subject_pk):
             'message': _('Вы уже состоите в выбранной группе.')  # TODO менять отображение (?)
         })
 
-    MIN_STUDENT_NUMBER = 12
-    if len(from_group.students.all()) <= MIN_STUDENT_NUMBER:
+    if len(from_group.students.all()) <= from_group.min_students:
         return JsonResponse({
             'status': 'error',
-            'message': _(f'В группе не может стать меньше {MIN_STUDENT_NUMBER} студентов.')
+            'message': _(f'В группе не может стать меньше {from_group.min_students} студентов.')
         })
 
-    MAX_STUDENT_NUMBER = 18
-    if len(to_group.students.all()) >= MAX_STUDENT_NUMBER:
+    if len(to_group.students.all()) >= to_group.max_students:
         return JsonResponse({
             'status': 'error',
-            'message': _(f'В группе не может быть больше {MAX_STUDENT_NUMBER} студентов.')
+            'message': _(f'В группе не может быть больше {to_group.max_students} студентов.')
         })
 
     TransferRequest.objects.create(

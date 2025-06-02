@@ -162,12 +162,8 @@ class SubjectAdmin(admin.ModelAdmin):
     def make_groups(self, request, object_id):
         subject = self.get_object(request, object_id)
         missing = []
-        if not subject.year:
-            missing.append('курс')
         if not subject.faculty:
             missing.append('факультет')
-        if not subject.department:
-            missing.append('кафедра')
 
         if missing:
             messages.warning(request, f'Не указаны: {', '.join(missing)}')
@@ -234,7 +230,7 @@ class TransferRequestAdmin(admin.ModelAdmin):
                 from_grp.students.remove(student)
                 to_grp.students.add(student)
 
-                req.delete()
+                req.status = TransferRequest.Status.APPROVED  # TODO не меняется
                 approved += 1
 
         self.message_user(

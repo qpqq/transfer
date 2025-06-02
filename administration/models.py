@@ -52,6 +52,7 @@ class Group(models.Model):
         verbose_name=_('Физтех-школа (факультет)')
     )
     stream = models.CharField(_('Учебный поток'), blank=True, null=True)
+    # noinspection PyUnresolvedReferences
     education_system = models.CharField(
         choices=EducationSystem.choices,
         verbose_name=_('Форма обучения')
@@ -91,6 +92,7 @@ class Student(models.Model):
     )
     # faculty  # TODO в таблице краткое наименование, непонятно как его привязывать
     year = models.IntegerField(_('Курс'))
+    # noinspection PyUnresolvedReferences
     sex = models.CharField(
         max_length=2,
         choices=Sex.choices,
@@ -192,6 +194,8 @@ class SubjectGroup(models.Model):
         blank=True,
         verbose_name=_('Студенты')
     )
+    min_students = models.IntegerField(_('Минимальное число студентов в группе'), default=12)
+    max_students = models.IntegerField(_('Максимальное число студентов в группе'), default=18)
 
     def get_teacher_names(self, default=_('--')):
         qs = self.teachers.all()
@@ -242,6 +246,7 @@ class TransferRequest(models.Model):
         related_name='incoming_requests',
         verbose_name=_('В группу')
     )
+    # noinspection PyUnresolvedReferences
     status = models.CharField(
         _('Статус'),
         choices=Status.choices,
@@ -328,10 +333,12 @@ class TransferRequestLog(models.Model):
         default=timezone.now,
         editable=False
     )
+    # noinspection PyUnresolvedReferences
     old_status = models.CharField(
         _('Старый статус'),
         choices=TransferRequest.Status.choices
     )
+    # noinspection PyUnresolvedReferences
     new_status = models.CharField(
         _('Новый статус'),
         choices=TransferRequest.Status.choices

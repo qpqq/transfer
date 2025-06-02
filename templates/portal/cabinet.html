@@ -91,7 +91,7 @@
                 <td>{{ row.teacher_names }}</td>
                 <td>
                     <button type="button" class="open-modal-btn" data-subject-id="{{ row.subject.pk }}">
-                        {% trans "Перевестись" %}
+                        {% trans "Выбрать группу" %}
                     </button>
                 </td>
             </tr>
@@ -135,12 +135,22 @@
                         <td>
                             {% if row.current_group and grp.pk == row.current_group.pk %}
                                 <em>{% trans "Вы состоите в этой группе" %}</em>
-                            {% elif row.has_pending %}
-                                <em style="color: orange;">{% trans "Заявка в обработке" %}</em>
+                            {% elif row.transfer_request %}
+                                {% if row.transfer_request.to_group.pk == grp.pk %}
+                                    {% if row.transfer_request.status == "created" %}
+                                        <em style="color: orange;">{% trans "Заявка в обработке" %}</em>
+                                    {% elif row.transfer_request.status == "approved" %}
+                                        <em style="color: green;">{% trans "Заявка одобрена" %}</em>
+                                    {% elif row.transfer_request.status == "rejected" %}
+                                        <em style="color: red;">{% trans "Заявка отклонена" %}</em>
+                                    {% endif %}
+                                {% else %}
+                                    <em>{% trans "Вы уже подали одну заявку" %}</em>
+                                {% endif %}
                             {% else %}
                                 <button type="button" class="do-transfer-btn"
                                         data-subject-id="{{ row.subject.pk }}" data-group-id="{{ grp.pk }}">
-                                    {% trans "Перевестись" %}
+                                    {% trans "Подать заявление" %}
                                 </button>
                             {% endif %}
                         </td>
