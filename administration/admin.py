@@ -6,7 +6,18 @@ from django.urls import path, reverse
 from django.utils.translation import gettext_lazy as _
 
 from .forms import StudentImportForm, GroupImportForm
-from .models import Faculty, Department, Group, Teacher, Student, Subject, SubjectGroup, TransferRequest
+from .models import Settings, Faculty, Department, Group, Teacher, Student, Subject, SubjectGroup, TransferRequest
+
+
+@admin.register(Settings)
+class SettingsAdmin(admin.ModelAdmin):
+    list_display = ('default_min_students', 'default_max_students', 'default_deadline')
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(Faculty)
@@ -180,14 +191,18 @@ class SubjectAdmin(admin.ModelAdmin):
 
 @admin.register(SubjectGroup)
 class SubjectGroupAdmin(admin.ModelAdmin):
-    list_display = ('subject', 'get_teachers')
+    list_display = ('subject', 'get_teachers', 'students_count')
     search_fields = ('subject__name', 'teachers__full_name')
     filter_horizontal = ('teachers', 'students')
 
     def get_teachers(self, obj):
         return ', '.join([t.full_name for t in obj.teachers.all()])
 
+    def students_count(self, obj):
+        return obj.students.count()
+
     get_teachers.short_description = 'Преподаватели'
+    students_count.short_description = 'Число студентов'
 
 
 @admin.register(TransferRequest)

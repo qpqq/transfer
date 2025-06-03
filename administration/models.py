@@ -1,10 +1,49 @@
 from collections import defaultdict
+from datetime import datetime
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+
+
+class Settings(models.Model):
+    class Meta:
+        verbose_name = _('Глобальные настройки')
+        verbose_name_plural = _('Глобальные настройки')
+
+    @staticmethod
+    def get_default_deadline():
+        tz = timezone.get_current_timezone()
+        now = timezone.now().astimezone(tz)
+        naive = datetime(year=now.year, month=now.month, day=3, hour=23, minute=59, second=59)
+        return timezone.make_aware(naive, tz)
+
+    default_min_students = models.PositiveIntegerField(
+        _('Минимальное число студентов в предметной группе по умолчанию'),
+        default=12
+    )
+    default_max_students = models.PositiveIntegerField(
+        _('Максимальное число студентов в предметной группе по умолчанию'),
+        default=18
+    )
+    default_deadline = models.DateTimeField(
+        _('Крайнее время подачи заявления на перевод по умолчанию'),
+        default=get_default_deadline
+    )
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls):
+        obj, created = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def __str__(self):
+        return str(_('Глобальные настройки'))
 
 
 class Faculty(models.Model):
@@ -194,12 +233,26 @@ class SubjectGroup(models.Model):
         blank=True,
         verbose_name=_('Студенты')
     )
-    min_students = models.IntegerField(_('Минимальное число студентов в группе'), default=12)
-    max_students = models.IntegerField(_('Максимальное число студентов в группе'), default=18)
+    min_students = models.IntegerField(_('Минимальное число студентов в группе'), default=0)
+    max_students = models.IntegerField(_('Максимальное число студентов в группе'), default=0)
+    deadline = models.DateTimeField(_('Крайнее время подачи заявления на перевод'), default=timezone.now)
 
     def get_teacher_names(self, default=_('--')):
         qs = self.teachers.all()
         return ', '.join([t.full_name for t in qs]) if qs else default
+
+    def save(self, *args, **kwargs):
+        if not self.pk:
+            admin_settings = Settings.load()
+
+            if not self.min_students:
+                self.min_students = admin_settings.default_min_students
+            if not self.max_students:
+                self.max_students = admin_settings.default_max_students
+            if not self.deadline:
+                self.deadline = admin_settings.default_deadline
+
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f'{self.subject.name}{f' - {self.get_teacher_names('')}' if self.get_teacher_names(None) else ''}'
