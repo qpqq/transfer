@@ -1,0 +1,445 @@
+{% load i18n %}
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>{% trans "Личный кабинет преподавателя" %}</title>
+    <style>
+        table, th, td {
+            border: 1px solid #666;
+            border-collapse: collapse;
+            padding: 8px;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: #fff;
+            padding: 20px;
+            border-radius: 4px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80%;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 8px;
+            right: 12px;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .modal-header {
+            margin-bottom: 15px;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.2em;
+        }
+
+        .error-message {
+            color: red;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .italic-note {
+            font-style: italic;
+            font-size: 0.9em;
+            color: #555;
+            margin-top: 5px;
+        }
+
+        .popup-success {
+            background: #f0fff0;
+            border: 1px solid #4caf50;
+            text-align: center;
+            max-width: 400px;
+        }
+    </style>
+</head>
+<body>
+<h1>{% trans "Личный кабинет преподавателя" %}</h1>
+<p>
+    {% trans "Вы зашли как" %}: <strong>{{ teacher.full_name }}</strong><br>
+    {% trans "E-mail" %}: <strong>{{ teacher.email }}</strong>
+</p>
+
+{# ========================================= #}
+{# БЛОК 1: Список предметных групп           #}
+{# ========================================= #}
+{% if subject_groups %}
+    <h2>{% trans "Ваши предметные группы:" %}</h2>
+    <table>
+        <thead>
+        <tr>
+            <th>{% trans "№" %}</th>
+            <th>{% trans "Предметная группа" %}</th>
+            <th>{% trans "Предмет" %}</th>
+            <th>{% trans "Студенты в группе" %}</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for group in subject_groups %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ group }}</td>
+                <td>{{ group.subject.name }}</td>
+                <td>
+                    {% if group.students.all %}
+                        <ol>
+                            {% for student in group.students.all %}
+                                <li>{{ student.full_name }}</li>
+                            {% endfor %}
+                        </ol>
+                    {% else %}
+                        <em>{% trans "В группе нет студентов" %}</em>
+                    {% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p>{% trans "У вас пока нет назначенных предметных групп." %}</p>
+{% endif %}
+
+<br><br>
+
+{# ========================================= #}
+{# БЛОК 2: Таблица заявок на перевод         #}
+{# ========================================= #}
+<h2>{% trans "Заявки на перевод студентов" %}</h2>
+{% if transfer_requests %}
+    <table>
+        <thead>
+        <tr>
+            <th>{% trans "№" %}</th>
+            <th>{% trans "Предмет" %}</th>
+            <th>{% trans "Студент" %}</th>
+            <th>{% trans "Из группы" %}</th>
+            <th>{% trans "В группу" %}</th>
+            <th>{% trans "Действие" %}</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for req in transfer_requests %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ req.subject.name }}</td>
+                <td>{{ req.student.full_name }}</td>
+                <td>{{ req.from_group }}</td>
+                <td>{{ req.to_group }}</td>
+                <td>
+                    <button
+                            type="button"
+                            class="open-approve-modal-btn"
+                            data-req-id="{{ req.pk }}">
+                        {% trans "Одобрить" %}
+                    </button>
+                    <button
+                            type="button"
+                            class="open-reject-modal-btn"
+                            data-req-id="{{ req.pk }}">
+                        {% trans "Отклонить" %}
+                    </button>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p>{% trans "Нет заявок на перевод, ожидающих вашего решения." %}</p>
+{% endif %}
+
+<br>
+<p>
+    <a href="{% url 'portal:login' %}?logout=1">
+        {% trans "Выйти" %}
+    </a>
+</p>
+
+{# ========================================= #}
+{# БЛОК 3: Модальные окна для форм           #}
+{# ========================================= #}
+{% for req in transfer_requests %}
+    {# ----- Модалка «Одобрить» ----- #}
+    <div id="modal-approve-{{ req.pk }}" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" data-req-id="{{ req.pk }}" data-type="approve">&times;</span>
+            <div class="modal-header">
+                <h2>{% trans "Одобрить перевод" %}</h2>
+            </div>
+            <p>
+                {% blocktrans %}
+                    Вы подтверждаете перевод <strong>{{ req.student.full_name }}</strong>
+                    из <em>{{ req.from_group }}</em> в <em>{{ req.to_group }}</em>?
+                {% endblocktrans %}
+            </p>
+            <label for="comment-approve-{{ req.pk }}">
+                {% trans "Комментарий" %}
+            </label>
+            <div class="italic-note">{% trans "(необязательно)" %}</div>
+            <textarea
+                    id="comment-approve-{{ req.pk }}"
+                    rows="4"
+                    style="width: 100%;"></textarea>
+            <div id="error-approve-{{ req.pk }}" class="error-message"></div>
+            <br>
+            <button
+                    type="button"
+                    class="send-approve-btn"
+                    data-req-id="{{ req.pk }}">
+                {% trans "Одобрить" %}
+            </button>
+        </div>
+    </div>
+
+    {# ----- Модалка «Отклонить» ----- #}
+    <div id="modal-reject-{{ req.pk }}" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" data-req-id="{{ req.pk }}" data-type="reject">&times;</span>
+            <div class="modal-header">
+                <h2>{% trans "Отклонить перевод" %}</h2>
+            </div>
+            <p>
+                {% blocktrans %}
+                    Вы уверены, что хотите отклонить перевод
+                    <strong>{{ req.student.full_name }}</strong> из
+                    <em>{{ req.from_group }}</em> в <em>{{ req.to_group }}</em>?
+                {% endblocktrans %}
+            </p>
+            <label for="comment-reject-{{ req.pk }}">
+                {% trans "Комментарий" %}
+            </label>
+            <div class="italic-note">{% trans "(обязательно)" %}</div>
+            <textarea
+                    id="comment-reject-{{ req.pk }}"
+                    rows="4"
+                    style="width: 100%;"></textarea>
+            <div id="error-reject-{{ req.pk }}" class="error-message"></div>
+            <br>
+            <button
+                    type="button"
+                    class="send-reject-btn"
+                    data-req-id="{{ req.pk }}">
+                {% trans "Отклонить" %}
+            </button>
+        </div>
+    </div>
+{% endfor %}
+
+{# ========================================= #}
+{# БЛОК 4: Попап успеха                      #}
+{# ========================================= #}
+<div id="success-popup" class="modal-overlay">
+    <div class="modal-content popup-success">
+        <span class="modal-close" id="success-close">&times;</span>
+        <p id="success-message"></p>
+    </div>
+</div>
+
+{# ========================================= #}
+{# БЛОК 5: Скрипт для AJAX и модалок         #}
+{# ========================================= #}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.startsWith(name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        const csrftoken = getCookie('csrftoken');
+
+        // Открытие модалки «Одобрить»
+        document.querySelectorAll('.open-approve-modal-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                const reqId = this.getAttribute('data-req-id');
+                const modal = document.getElementById(`modal-approve-${reqId}`);
+                if (modal) modal.style.display = 'flex';
+            });
+        });
+
+        // Открытие модалки «Отклонить»
+        document.querySelectorAll('.open-reject-modal-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                const reqId = this.getAttribute('data-req-id');
+                const modal = document.getElementById(`modal-reject-${reqId}`);
+                if (modal) modal.style.display = 'flex';
+            });
+        });
+
+        // Закрытие модалок при клике на крестик
+        document.querySelectorAll('.modal-close').forEach(function (span) {
+            span.addEventListener('click', function () {
+                const reqId = this.getAttribute('data-req-id');
+                const type = this.getAttribute('data-type'); // "approve" или "reject" или undefined (для success-popup)
+                const modal = type
+                    ? document.getElementById(`modal-${type}-${reqId}`)
+                    : document.getElementById('success-popup');
+                if (modal) {
+                    modal.style.display = 'none';
+                    if (type === 'reject') clearError(reqId, 'reject');
+                    if (type === 'approve') clearError(reqId, 'approve');
+                }
+            });
+        });
+
+        // Закрытие при клике вне контента
+        document.querySelectorAll('.modal-overlay').forEach(function (overlay) {
+            overlay.addEventListener('click', function (e) {
+                if (e.target === overlay) {
+                    overlay.style.display = 'none';
+                    const parts = overlay.id.split('-'); // ["modal", "reject"/"approve", reqId] или ["success","popup"]
+                    if (parts[1] === 'reject') clearError(parts[2], 'reject');
+                    if (parts[1] === 'approve') clearError(parts[2], 'approve');
+                }
+            });
+        });
+
+        // Закрытие попапа успеха
+        document.getElementById('success-close').addEventListener('click', function () {
+            document.getElementById('success-popup').style.display = 'none';
+        });
+        document.getElementById('success-popup').addEventListener('click', function (e) {
+            if (e.target === this) this.style.display = 'none';
+        });
+
+        // Отправка AJAX-запроса для «Одобрить»
+        document.querySelectorAll('.send-approve-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                const reqId = this.getAttribute('data-req-id');
+                const comment = document.getElementById(`comment-approve-${reqId}`).value.trim();
+                const errorDiv = document.getElementById(`error-approve-${reqId}`);
+                if (errorDiv) {
+                    errorDiv.style.display = 'none';
+                    errorDiv.textContent = '';
+                }
+                const formData = new FormData();
+                formData.append('comment', comment);
+
+                fetch(`/transfer/approve/${reqId}/`, {
+                    method: 'POST',
+                    headers: {'X-CSRFToken': csrftoken},
+                    body: formData
+                })
+                    .then(response => response.json().then(data => ({status: response.status, body: data})))
+                    .then(({status, body}) => {
+                        if (status === 200 && body.status === 'success') {
+                            closeModal(`approve-${reqId}`);
+                            showSuccess(body.message);
+                        } else {
+                            const msg = body.message || '{% trans "Неизвестная ошибка" %}';
+                            if (errorDiv) {
+                                errorDiv.textContent = msg;
+                                errorDiv.style.display = 'block';
+                            }
+                        }
+                    })
+                    .catch(err => {
+                        if (errorDiv) {
+                            errorDiv.textContent = err.message;
+                            errorDiv.style.display = 'block';
+                        }
+                    });
+            });
+        });
+
+        // Отправка AJAX-запроса для «Отклонить»
+        document.querySelectorAll('.send-reject-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                const reqId = this.getAttribute('data-req-id');
+                const commentEl = document.getElementById(`comment-reject-${reqId}`);
+                const comment = commentEl.value.trim();
+                const errorDiv = document.getElementById(`error-reject-${reqId}`);
+                if (errorDiv) {
+                    errorDiv.style.display = 'none';
+                    errorDiv.textContent = '';
+                }
+                if (!comment) {
+                    if (errorDiv) {
+                        errorDiv.textContent = '{% trans "Комментарий обязателен при отклонении." %}';
+                        errorDiv.style.display = 'block';
+                    }
+                    return;
+                }
+                const formData = new FormData();
+                formData.append('comment', comment);
+
+                fetch(`/transfer/reject/${reqId}/`, {
+                    method: 'POST',
+                    headers: {'X-CSRFToken': csrftoken},
+                    body: formData
+                })
+                    .then(response => response.json().then(data => ({status: response.status, body: data})))
+                    .then(({status, body}) => {
+                        if (status === 200 && body.status === 'success') {
+                            closeModal(`reject-${reqId}`);
+                            showSuccess(body.message);
+                        } else {
+                            const msg = body.message || '{% trans "Неизвестная ошибка" %}';
+                            if (errorDiv) {
+                                errorDiv.textContent = msg;
+                                errorDiv.style.display = 'block';
+                            }
+                        }
+                    })
+                    .catch(err => {
+                        if (errorDiv) {
+                            errorDiv.textContent = err.message;
+                            errorDiv.style.display = 'block';
+                        }
+                    });
+            });
+        });
+
+        function closeModal(id) {
+            const modal = document.getElementById(`modal-${id}`);
+            if (modal) modal.style.display = 'none';
+        }
+
+        function showSuccess(message) {
+            const popup = document.getElementById('success-popup');
+            const msgEl = document.getElementById('success-message');
+            msgEl.textContent = message;
+            popup.style.display = 'flex';
+        }
+
+        function clearError(reqId, type) {
+            const errorDiv = document.getElementById(`error-${type}-${reqId}`);
+            if (errorDiv) {
+                errorDiv.textContent = '';
+                errorDiv.style.display = 'none';
+            }
+        }
+    });
+</script>
+</body>
+</html>

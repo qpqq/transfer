@@ -2,7 +2,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
-from administration.models import Student
+from administration.models import Student, Teacher
 
 
 class EmailLoginForm(forms.Form):
@@ -13,13 +13,23 @@ class EmailLoginForm(forms.Form):
 
         try:
             Student.objects.get(email=email)
+            return email
         except Student.DoesNotExist:
-            raise ValidationError(
-                _('Студент с таким e-mail не найден.'),
-                code='student_not_found'
-            )
+            pass
 
-        return email
+        try:
+            Teacher.objects.get(email=email)
+            return email
+        except Teacher.DoesNotExist:
+            pass
 
-    def get_student(self):
-        return Student.objects.get(email=self.cleaned_data['email'])
+        raise ValidationError(
+            _('Пользователь с таким e-mail не найден.'),
+            code='user_not_found'
+        )
+
+    def get_user(self):
+        try:
+            return Student.objects.get(email=self.cleaned_data['email'])
+        except Student.DoesNotExist:
+            return Teacher.objects.get(email=self.cleaned_data['email'])

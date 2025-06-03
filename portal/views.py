@@ -4,7 +4,7 @@ from django.shortcuts import render
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_http_methods
 
-from administration.models import Student, SubjectGroup, Subject, TransferRequest
+from administration.models import Student, SubjectGroup, Subject, TransferRequest, Teacher
 from .forms import EmailLoginForm
 
 
@@ -13,10 +13,14 @@ def login_view(request):
         form = EmailLoginForm(request.POST)
 
         if form.is_valid():
-            student = form.get_student()
+            user = form.get_user()
 
-            request.session['student_id'] = student.pk
-            return redirect('portal:cabinet')
+            if isinstance(user, Student):
+                request.session['student_pk'] = user.pk
+                return redirect('portal:cabinet')
+            elif isinstance(user, Teacher):
+                request.session['teacher_pk'] = user.pk
+                return redirect('portal:teacher')
 
     else:
         form = EmailLoginForm()
@@ -25,14 +29,14 @@ def login_view(request):
 
 
 def cabinet_view(request):
-    student_pk = request.session.get('student_id')
+    student_pk = request.session.get('student_pk')
     if not student_pk:
         return redirect('portal:login')
 
     try:
         student = Student.objects.get(pk=student_pk)
     except Student.DoesNotExist:
-        request.session.pop('student_id', None)
+        request.session.pop('student_pk', None)
         return redirect('portal:login')
 
     subjects = (
@@ -73,9 +77,43 @@ def cabinet_view(request):
     })
 
 
+def teacher_view(request):
+    teacher_pk = request.session.get('teacher_pk')
+    print(teacher_pk)
+    if not teacher_pk:
+        return redirect('portal:login')
+
+    try:
+        teacher = Teacher.objects.get(pk=teacher_pk)
+    except Teacher.DoesNotExist:
+        request.session.pop('teacher_pk', None)
+        return redirect('portal:login')
+
+    subject_groups = (
+        SubjectGroup.objects
+        .filter(teachers=teacher)
+        .select_related('subject')
+        .prefetch_related('students')
+    )
+
+    transfer_requests = (
+        TransferRequest.objects
+        .filter(status=TransferRequest.Status.WAITING_TEACHER,
+                to_group__teachers=teacher)
+        .select_related('student', 'subject', 'from_group', 'to_group')
+    )
+
+    context = {
+        'teacher': teacher,
+        'subject_groups': subject_groups,
+        'transfer_requests': transfer_requests,
+    }
+    return render(request, 'portal/teacher.html', context)
+
+
 @require_http_methods(['POST'])
 def transfer_view(request, subject_pk):
-    student_pk = request.session.get('student_id')
+    student_pk = request.session.get('student_pk')
     if not student_pk:
         return JsonResponse({
             'status': 'error',
@@ -85,7 +123,7 @@ def transfer_view(request, subject_pk):
     try:
         student = Student.objects.get(pk=student_pk)
     except Student.DoesNotExist:
-        request.session.pop('student_id', None)
+        request.session.pop('student_pk', None)
         return JsonResponse({
             'status': 'error',
             'message': _('Студент не найден. Выполните вход заново.')
@@ -158,4 +196,99 @@ def transfer_view(request, subject_pk):
     return JsonResponse({
         'status': 'success',
         'message': _('Ваша заявка на перевод отправлена.')
+    })
+
+
+def approve_or_reject(request, pk):
+    teacher_pk = request.session.get('teacher_pk')
+    if not teacher_pk:
+        return JsonResponse({
+            'status': 'error',
+            'message': _('Пожалуйста, сначала войдите в систему как преподаватель.')
+        }, status=403)
+
+    try:
+        teacher = Teacher.objects.get(pk=teacher_pk)
+    except Teacher.DoesNotExist:
+        request.session.pop('teacher_pk', None)
+        return JsonResponse({
+            'status': 'error',
+            'message': _('Преподаватель не найден. Выполните вход заново.')
+        }, status=403)
+
+    try:
+        req = TransferRequest.objects.get(pk=pk)
+    except TransferRequest.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': _('Заявка не найдена.')
+        }, status=404)
+
+    if req.status != TransferRequest.Status.WAITING_TEACHER:
+        return JsonResponse({
+            'status': 'error',
+            'message': _('Заявка не ожидает действия от преподавателя.')
+        }, status=403)
+
+    if not req.to_group.teachers.filter(pk=teacher.pk).exists():
+        return JsonResponse({
+            'status': 'error',
+            'message': _('У вас нет прав на действия для этой заявки.')
+        }, status=403)
+
+    return req
+
+
+@require_http_methods(['POST'])
+def approve_transfer(request, pk):
+    data = approve_or_reject(request, pk)
+    if isinstance(data, JsonResponse):
+        return data
+
+    req = data
+
+    comment = request.POST.get('comment', '').strip()
+    if comment:
+        prefix = _('Комментарий от преподавателя:') + '\n'
+        if req.comment:
+            req.comment += '\n\n' + prefix + f'«{comment}»'
+        else:
+            req.comment = prefix + f'«{comment}»'
+
+    req.status = TransferRequest.Status.WAITING_ADMIN
+    req.save()
+
+    return JsonResponse({
+        'status': 'success',
+        'message': _('Заявка одобрена и отправлена на рассмотрение администратора.')
+    })
+
+
+@require_http_methods(['POST'])
+def reject_transfer(request, pk):
+    data = approve_or_reject(request, pk)
+    if isinstance(data, JsonResponse):
+        return data
+
+    req = data
+
+    comment = request.POST.get('comment', '').strip()
+    if not comment:
+        return JsonResponse({
+            'status': 'error',
+            'message': _('Комментарий обязателен при отклонении.')
+        }, status=400)
+
+    prefix = _('Заявка отклонена преподавателем. Комментарий от преподавателя:') + '\n'
+    if req.comment:
+        req.comment += '\n\n' + prefix + f'«{comment}»'
+    else:
+        req.comment = prefix + f'«{comment}»'
+
+    req.status = TransferRequest.Status.REJECTED
+    req.save()
+
+    return JsonResponse({
+        'status': 'success',
+        'message': _('Заявка отклонена.')
     })
