@@ -326,10 +326,12 @@
 
         // Закрытие попапа успеха
         document.getElementById('success-close').addEventListener('click', function () {
-            document.getElementById('success-popup').style.display = 'none';
+            {#document.getElementById('success-popup').style.display = 'none';#}
+            window.location.reload();
         });
         document.getElementById('success-popup').addEventListener('click', function (e) {
-            if (e.target === this) this.style.display = 'none';
+            {#if (e.target === this) this.style.display = 'none';#}
+            window.location.reload();
         });
 
         // Отправка AJAX-запроса для «Одобрить»

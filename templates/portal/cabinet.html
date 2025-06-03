@@ -137,9 +137,13 @@
                                 <em>{% trans "Вы состоите в этой группе" %}</em>
                             {% elif row.transfer_request %}
                                 {% if row.transfer_request.to_group.pk == grp.pk %}
-                                    {% if row.transfer_request.status == "created" %}
-                                        <em style="color: orange;">{% trans "Заявка в обработке" %}</em>
-                                    {% elif row.transfer_request.status == "approved" %}
+                                    {% if row.transfer_request.status == "pending" %}
+                                        <em style="color: orange;">{% trans "Заявка в очереди" %}</em>
+                                    {% elif row.transfer_request.status == "waiting_teacher" %}
+                                        <em style="color: orange;">{% trans "Заявка ждет ответа преподавателя" %}</em>
+                                    {% elif row.transfer_request.status == "waiting_admin" %}
+                                        <em style="color: orange;">{% trans "Заявка ждет ответа администратора" %}</em>
+                                    {% elif row.transfer_request.status == "completed" %}
                                         <em style="color: green;">{% trans "Заявка одобрена" %}</em>
                                     {% elif row.transfer_request.status == "rejected" %}
                                         <em style="color: red;">{% trans "Заявка отклонена" %}</em>
@@ -203,12 +207,14 @@
         });
 
         document.getElementById('success-close').addEventListener('click', function () {
-            document.getElementById('success-popup').style.display = 'none';
+            {#document.getElementById('success-popup').style.display = 'none';#}
+            window.location.reload();
         });
 
         document.getElementById('success-popup').addEventListener('click', function (e) {
             if (e.target === this) {
-                this.style.display = 'none';
+                {#this.style.display = 'none';#}
+                window.location.reload();
             }
         });
 
