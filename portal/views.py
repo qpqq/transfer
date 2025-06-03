@@ -1,6 +1,7 @@
 from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.shortcuts import render
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_http_methods
 
@@ -173,17 +174,23 @@ def transfer_view(request, subject_pk):
             'message': _('Вы уже состоите в выбранной группе.')  # TODO менять отображение (?)
         })
 
-    if len(from_group.students.all()) <= from_group.min_students:
+    if from_group.students.count() <= from_group.min_students:
         return JsonResponse({
             'status': 'error',
             'message': _(f'В группе не может стать меньше {from_group.min_students} студентов.')
         })
 
-    if len(to_group.students.all()) >= to_group.max_students:
+    if to_group.students.count() >= to_group.max_students:
         return JsonResponse({
             'status': 'error',
             'message': _(f'В группе не может быть больше {to_group.max_students} студентов.')
         })
+
+    if timezone.now() > to_group.deadline:
+        return JsonResponse({
+            'status': 'error',
+            'message': _('Срок подачи заявлений на перевод истёк.')
+        }, status=400)
 
     TransferRequest.objects.create(
         student=student,
