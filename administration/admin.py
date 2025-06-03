@@ -181,6 +181,7 @@ class SubjectAdmin(admin.ModelAdmin):
         else:
             subject.create_subject_groups()
             messages.success(request, 'Предметные группы успешно сформированы')
+
         return redirect(
             reverse('admin:%s_%s_change' % (
                 subject._meta.app_label,
@@ -245,4 +246,49 @@ class TransferRequestAdmin(admin.ModelAdmin):
             request,
             _('Одобрено заявок: %(count)d') % {'count': count},
             level=messages.SUCCESS
+        )
+
+    def get_urls(self):
+        custom_urls = [
+            path(
+                '<int:object_id>/approve/',
+                self.admin_site.admin_view(self.approve),
+                name='administration_transferrequest_approve',
+            ),
+            path(
+                '<int:object_id>/reject/',
+                self.admin_site.admin_view(self.reject),
+                name='administration_transferrequest_reject',
+            ),
+        ]
+        return custom_urls + super().get_urls()
+
+    def approve(self, request, object_id):
+        transfer_request = self.get_object(request, object_id)
+        transfer_request.complete()
+
+        return redirect(
+            reverse('admin:%s_%s_change' % (
+                transfer_request._meta.app_label,
+                transfer_request._meta.model_name,
+            ), args=[object_id])
+        )
+
+    def reject(self, request, object_id):
+        transfer_request = self.get_object(request, object_id)
+
+        if not transfer_request.comment:
+            self.message_user(
+                request,
+                _('При отклонении заявки необходимо указывать комментарий'),
+                level=messages.ERROR
+            )
+
+        transfer_request.reject()
+
+        return redirect(
+            reverse('admin:%s_%s_change' % (
+                transfer_request._meta.app_label,
+                transfer_request._meta.model_name,
+            ), args=[object_id])
         )

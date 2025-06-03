@@ -1,6 +1,41 @@
 {% extends "admin/change_form.html" %}
 {% load i18n %}
 
+{% block object-tools %}
+    <style>
+        .add-link {
+            margin-bottom: 8px;
+        }
+    </style>
+
+    {{ block.super }}
+
+    <li class="add-link">
+        {% if original.pk %}
+            <a href="{% url 'admin:administration_transferrequest_approve' original.id %}" class="addlink">
+                {% trans "Одобрить заявку и сделать перевод" %}
+            </a>
+        {% else %}
+            <a href="#" class="addlink"
+               onclick="alert('{% trans "Сначала нужно создать и сохранить заявку." %}'); return false;">
+                {% trans "Одобрить заявку и сделать перевод" %}
+            </a>
+        {% endif %}
+    </li>
+    <li class="add-link">
+        {% if original.pk %}
+            <a href="{% url 'admin:administration_transferrequest_reject' original.id %}" class="addlink">
+                {% trans "Отклонить заявку" %}
+            </a>
+        {% else %}
+            <a href="#" class="addlink"
+               onclick="alert('{% trans "Сначала нужно создать и сохранить заявку." %}'); return false;">
+                {% trans "Отклонить заявку" %}
+            </a>
+        {% endif %}
+    </li>
+{% endblock %}
+
 {% block submit_buttons_bottom %}
     {{ block.super }}
 

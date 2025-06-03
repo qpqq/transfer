@@ -332,6 +332,10 @@ class TransferRequest(models.Model):
             self.status = TransferRequest.Status.COMPLETED
             self.save()
 
+    def reject(self):
+        self.status = TransferRequest.Status.REJECTED
+        self.save()
+
     def save(self, *args, **kwargs):
         # Создать уникальный человеко-читаемый код
         if not self.code:
