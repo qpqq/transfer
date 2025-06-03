@@ -208,7 +208,7 @@ class SubjectGroupAdmin(admin.ModelAdmin):
 @admin.register(TransferRequest)
 class TransferRequestAdmin(admin.ModelAdmin):
     list_display = ('code', 'student', 'subject', 'from_group', 'to_group', 'status', 'created_at')
-    list_filter = ('created_at',)
+    list_filter = ('status', 'created_at')
     search_fields = ('student__full_name', 'subject__name')
     actions = ['approve_requests']
 
@@ -234,22 +234,15 @@ class TransferRequestAdmin(admin.ModelAdmin):
 
     @admin.action(description=_('Одобрить выделенные заявки'))
     def approve_requests(self, request, queryset):
-        approved = 0
+        count = 0
 
         with transaction.atomic():
             for req in queryset:
-                student = req.student
-                from_grp = req.from_group
-                to_grp = req.to_group
-
-                from_grp.students.remove(student)
-                to_grp.students.add(student)
-
-                # req.status = TransferRequest.Status.APPROVED  # TODO не меняется
-                approved += 1
+                req.complete()
+                count += 1
 
         self.message_user(
             request,
-            _('Одобрено заявок: %(count)d') % {'count': approved},
+            _('Одобрено заявок: %(count)d') % {'count': count},
             level=messages.SUCCESS
         )

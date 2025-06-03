@@ -186,7 +186,7 @@ def transfer_view(request, subject_pk):
             'message': _(f'В группе не может быть больше {to_group.max_students} студентов.')
         })
 
-    if timezone.now() > to_group.deadline:
+    if to_group.deadline and timezone.now() > to_group.deadline:
         return JsonResponse({
             'status': 'error',
             'message': _('Срок подачи заявлений на перевод истёк.')

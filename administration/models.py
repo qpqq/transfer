@@ -233,9 +233,9 @@ class SubjectGroup(models.Model):
         blank=True,
         verbose_name=_('Студенты')
     )
-    min_students = models.IntegerField(_('Минимальное число студентов в группе'), default=0)
-    max_students = models.IntegerField(_('Максимальное число студентов в группе'), default=0)
-    deadline = models.DateTimeField(_('Крайнее время подачи заявления на перевод'), default=timezone.now)
+    min_students = models.PositiveIntegerField(_('Минимальное число студентов в группе'), default=0)
+    max_students = models.PositiveIntegerField(_('Максимальное число студентов в группе'), default=0)
+    deadline = models.DateTimeField(_('Крайнее время подачи заявления на перевод'), null=True, blank=True)
 
     def get_teacher_names(self, default=_('--')):
         qs = self.teachers.all()
@@ -318,6 +318,19 @@ class TransferRequest(models.Model):
         default=timezone.now,
         editable=False
     )
+
+    def complete(self):
+        with transaction.atomic():
+            if self.from_group.pk == self.to_group.pk:
+                self.status = TransferRequest.Status.COMPLETED
+                self.save()
+                return
+
+            self.from_group.students.remove(self.student)
+            self.to_group.students.add(self.student)
+
+            self.status = TransferRequest.Status.COMPLETED
+            self.save()
 
     def save(self, *args, **kwargs):
         # Создать уникальный человеко-читаемый код
