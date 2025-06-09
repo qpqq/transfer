@@ -34,6 +34,18 @@
             </a>
         {% endif %}
     </li>
+        <li class="add-link">
+        {% if original.pk %}
+            <a href="{% url 'admin:administration_transferrequest_undo' original.id %}" class="addlink">
+                {% trans "Отменить одобрение с переводом или отклонение" %}
+            </a>
+        {% else %}
+            <a href="#" class="addlink"
+               onclick="alert('{% trans "Сначала нужно создать и сохранить заявку." %}'); return false;">
+                {% trans "Отменить одобрение с переводом или отклонение" %}
+            </a>
+        {% endif %}
+    </li>
 {% endblock %}
 
 {% block submit_buttons_bottom %}

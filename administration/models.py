@@ -330,13 +330,9 @@ class TransferRequest(models.Model):
             return
 
         with transaction.atomic():
-            if self.from_group.pk == self.to_group.pk:
-                self.status = TransferRequest.Status.COMPLETED
-                self.save()
-                return
-
-            self.from_group.students.remove(self.student)
-            self.to_group.students.add(self.student)
+            if self.from_group.pk != self.to_group.pk:
+                self.from_group.students.remove(self.student)
+                self.to_group.students.add(self.student)
 
             self.status = TransferRequest.Status.COMPLETED
             self.save()
@@ -349,6 +345,18 @@ class TransferRequest(models.Model):
 
         self.status = TransferRequest.Status.REJECTED
         self.save()
+
+    def undo(self):
+        if self.status != self.Status.COMPLETED and self.status != self.Status.REJECTED:
+            return
+
+        with transaction.atomic():
+            if self.from_group.pk != self.to_group.pk:
+                self.to_group.students.remove(self.student)
+                self.from_group.students.add(self.student)
+
+            self.status = TransferRequest.Status.WAITING_ADMIN
+            self.save()
 
     def save(self, *args, **kwargs):
         # Создать уникальный человеко-читаемый код

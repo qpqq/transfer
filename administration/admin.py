@@ -261,11 +261,11 @@ class TransferRequestAdmin(admin.ModelAdmin):
                 self.admin_site.admin_view(self.reject),
                 name='administration_transferrequest_reject'
             ),
-            # path(
-            #     '<int:object_id>/undo/',
-            #     self.admin_site.admin_view(self.undo),
-            #     name='administration_transferrequest_undo',
-            # )
+            path(
+                '<int:object_id>/undo/',
+                self.admin_site.admin_view(self.undo),
+                name='administration_transferrequest_undo',
+            )
         ]
         return custom_urls + super().get_urls()
 
@@ -315,6 +315,27 @@ class TransferRequestAdmin(admin.ModelAdmin):
 
         else:
             transfer_request.reject()
+
+        return redirect(
+            reverse('admin:%s_%s_change' % (
+                transfer_request._meta.app_label,
+                transfer_request._meta.model_name,
+            ), args=[object_id])
+        )
+
+    def undo(self, request, object_id):
+        transfer_request = self.get_object(request, object_id)
+
+        if transfer_request.status != transfer_request.Status.COMPLETED \
+                and transfer_request.status != transfer_request.Status.REJECTED:
+            self.message_user(
+                request,
+                _('Заявка должна быть одобрена или отклонена'),
+                level=messages.ERROR
+            )
+
+        else:
+            transfer_request.undo()
 
         return redirect(
             reverse('admin:%s_%s_change' % (
