@@ -255,12 +255,7 @@ def approve_transfer(request, pk):
     req = data
 
     comment = request.POST.get('comment', '').strip()
-    if comment:
-        prefix = _('Комментарий от преподавателя:') + '\n'
-        if req.comment:
-            req.comment += '\n\n' + prefix + f'«{comment}»'
-        else:
-            req.comment = prefix + f'«{comment}»'
+    req.comment_teacher = comment
 
     req.status = TransferRequest.Status.WAITING_ADMIN
     req.save()
@@ -286,11 +281,8 @@ def reject_transfer(request, pk):
             'message': _('Комментарий обязателен при отклонении.')
         }, status=400)
 
-    prefix = _('Заявка отклонена преподавателем. Комментарий от преподавателя:') + '\n'
-    if req.comment:
-        req.comment += '\n\n' + prefix + f'«{comment}»'
-    else:
-        req.comment = prefix + f'«{comment}»'
+    prefix = _('Заявка отклонена преподавателем. Комментарий от преподавателя: ')
+    req.comment_teacher = prefix + f'«{comment}»'
 
     req.status = TransferRequest.Status.REJECTED
     req.save()

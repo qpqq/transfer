@@ -17,7 +17,7 @@ class Settings(models.Model):
     def get_default_deadline():
         tz = timezone.get_current_timezone()
         now = timezone.now().astimezone(tz)
-        naive = datetime(year=now.year, month=now.month, day=3, hour=23, minute=59, second=59)
+        naive = datetime(year=now.year, month=9, day=14, hour=23, minute=59, second=59)
         return timezone.make_aware(naive, tz)
 
     default_min_students = models.PositiveIntegerField(
@@ -237,7 +237,7 @@ class SubjectGroup(models.Model):
     max_students = models.PositiveIntegerField(_('Максимальное число студентов в группе'), default=0)
     deadline = models.DateTimeField(_('Крайнее время подачи заявления на перевод'), null=True, blank=True)
 
-    def get_teacher_names(self, default=_('--')):
+    def get_teacher_names(self, default: any = _('--')):
         qs = self.teachers.all()
         return ', '.join([t.full_name for t in qs]) if qs else default
 
@@ -306,6 +306,12 @@ class TransferRequest(models.Model):
         _('Статус'),
         choices=Status.choices,
         default=Status.PENDING,
+        editable=False
+    )
+    comment_teacher = models.TextField(
+        _('Комментарий преподавателя'),
+        null=True,
+        blank=True,
         editable=False
     )
     comment = models.TextField(
