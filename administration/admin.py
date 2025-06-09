@@ -66,7 +66,7 @@ class GroupAdmin(admin.ModelAdmin):
 
                     self.message_user(
                         request,
-                        f'Импорт групп завершён: создано {created}, обновлено {updated}, пропущено {skipped}.',
+                        f'Импорт групп завершён: создано {created}, обновлено {updated}, пропущено {skipped}',
                         level=messages.SUCCESS
                     )
 
@@ -126,7 +126,7 @@ class StudentAdmin(admin.ModelAdmin):
 
                     self.message_user(
                         request,
-                        f'Импорт студентов: создано {created}, обновлено {updated}, пропущено {skipped}.',
+                        f'Импорт студентов: создано {created}, обновлено {updated}, пропущено {skipped}',
                         level=messages.SUCCESS
                     )
 
@@ -254,19 +254,33 @@ class TransferRequestAdmin(admin.ModelAdmin):
             path(
                 '<int:object_id>/approve/',
                 self.admin_site.admin_view(self.approve),
-                name='administration_transferrequest_approve',
+                name='administration_transferrequest_approve'
             ),
             path(
                 '<int:object_id>/reject/',
                 self.admin_site.admin_view(self.reject),
-                name='administration_transferrequest_reject',
+                name='administration_transferrequest_reject'
             ),
+            # path(
+            #     '<int:object_id>/undo/',
+            #     self.admin_site.admin_view(self.undo),
+            #     name='administration_transferrequest_undo',
+            # )
         ]
         return custom_urls + super().get_urls()
 
     def approve(self, request, object_id):
         transfer_request = self.get_object(request, object_id)
-        transfer_request.complete()
+
+        if transfer_request.status == transfer_request.Status.COMPLETED:
+            self.message_user(
+                request,
+                _('Заявка уже одобрена и перевод выполнен'),
+                level=messages.ERROR
+            )
+
+        else:
+            transfer_request.complete()
 
         return redirect(
             reverse('admin:%s_%s_change' % (
@@ -285,7 +299,22 @@ class TransferRequestAdmin(admin.ModelAdmin):
                 level=messages.ERROR
             )
 
-        transfer_request.reject()
+        elif transfer_request.status == transfer_request.Status.COMPLETED:
+            self.message_user(
+                request,
+                _('Нельзя отклонить одобренную заявку'),
+                level=messages.ERROR
+            )
+
+        elif transfer_request.status == transfer_request.Status.REJECTED:
+            self.message_user(
+                request,
+                _('Заявка уже отклонена'),
+                level=messages.ERROR
+            )
+
+        else:
+            transfer_request.reject()
 
         return redirect(
             reverse('admin:%s_%s_change' % (

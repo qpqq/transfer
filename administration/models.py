@@ -151,7 +151,7 @@ class Teacher(models.Model):
         ordering = ['full_name']
 
     full_name = models.CharField(_('Преподаватель'))
-    email = models.EmailField(_('Адрес электронной почты'))  # TODO unique=True
+    email = models.EmailField(_('Адрес электронной почты'), unique=True)
 
     def __str__(self):
         return self.full_name
@@ -326,6 +326,9 @@ class TransferRequest(models.Model):
     )
 
     def complete(self):
+        if self.status == self.Status.COMPLETED:
+            return
+
         with transaction.atomic():
             if self.from_group.pk == self.to_group.pk:
                 self.status = TransferRequest.Status.COMPLETED
@@ -339,6 +342,11 @@ class TransferRequest(models.Model):
             self.save()
 
     def reject(self):
+        if self.status == self.Status.COMPLETED:
+            return
+        elif self.status == self.Status.REJECTED:
+            return
+
         self.status = TransferRequest.Status.REJECTED
         self.save()
 
