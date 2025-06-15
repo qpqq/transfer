@@ -34,7 +34,7 @@
             </a>
         {% endif %}
     </li>
-        <li class="add-link">
+    <li class="add-link">
         {% if original.pk %}
             <a href="{% url 'admin:administration_transferrequest_undo' original.id %}" class="addlink">
                 {% trans "Отменить одобрение с переводом или отклонение" %}
@@ -52,36 +52,26 @@
     {{ block.super }}
 
     <div class="module" style="padding-top: 8px;">
-        <h2>{% trans "История изменений статуса" %}</h2>
-        {% if logs %}
+        <h2>{% trans "История изменений полей" %}</h2>
+
+        {% if field_logs %}
             <ul style="list-style: none; padding-left: 0;">
-                {% for log in logs %}
-                    <li style="padding: 0.5em 0; border-bottom: 1px solid #e0e0e0;">
-                        <strong>{{ log.timestamp|date:"d-m-Y H:i" }}</strong>:
-
-                        {% if log.old_status == log.new_status %}
-                            {{ log.get_new_status_display }}
-                        {% else %}
-                            {{ log.get_old_status_display }} → {{ log.get_new_status_display }}
-                        {% endif %}
-
-                        {% if log.performed_by %}
-                            &mdash;
-                            {% if log.performed_by.get_full_name %}
-                                {{ log.performed_by.get_full_name }}
-                            {% else %}
-                                {{ log.performed_by.username }}
-                            {% endif %}
-                        {% endif %}
-
-                        {% if log.comment %}
-                            <br><em style="color: #777;">{{ log.comment }}</em>
+                {% for log in field_logs %}
+                    <li style="padding: 0.5em 0; border-bottom: 1px solid #ddd;">
+                        <strong>{{ log.timestamp|date:"d-m-Y H:i" }}</strong>
+                        &nbsp;&mdash;&nbsp;
+                        <code>{{ log.label }}</code>:
+                        <em>{{ log.old }}</em>
+                        &rarr;
+                        <em>{{ log.new }}</em>
+                        {% if log.modified_by %}
+                            &nbsp;&mdash;&nbsp;{{ log.modified_by }}
                         {% endif %}
                     </li>
                 {% endfor %}
             </ul>
         {% else %}
-            <p style="color: #777;">{% trans "Записей об изменении статуса ещё нет." %}</p>
+            <p style="color: #777;">{% trans "Изменений полей ещё нет." %}</p>
         {% endif %}
     </div>
 {% endblock %}

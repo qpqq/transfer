@@ -2,6 +2,7 @@ from collections import defaultdict
 from datetime import datetime
 
 from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.utils import timezone
@@ -381,26 +382,29 @@ class TransferRequest(models.Model):
                 suffix = str(next_num).zfill(4)
                 self.code = f'{prefix}-{suffix}'
 
-        is_new = self._state.adding
-        old_status = None
-
-        if not is_new:
-            prev = TransferRequest.objects.filter(pk=self.pk).only('status').first()
-            if prev:
-                old_status = prev.status
+        old = None
+        if not self._state.adding:
+            old = self.__class__.objects.filter(pk=self.pk).first()
 
         super().save(*args, **kwargs)
 
-        new_status = self.status
+        if old:
+            for field in self._meta.get_fields():
+                if not hasattr(field, 'attname') or field.auto_created:
+                    continue
 
-        if is_new or (old_status and old_status != new_status):
-            TransferRequestLog.objects.create(
-                transfer_request=self,
-                old_status=old_status or TransferRequest.Status.PENDING,
-                new_status=new_status,
-                performed_by=getattr(self, '_modified_by', None),
-                comment=getattr(self, '_status_comment', None)
-            )
+                name = field.attname
+                old_val = getattr(old, name)
+                new_val = getattr(self, name)
+                if old_val != new_val:
+                    FieldChangeLog.objects.create(
+                        content_type=ContentType.objects.get_for_model(self),
+                        object_id=self.pk,
+                        field_name=name,
+                        old_value=str(old_val),
+                        new_value=str(new_val),
+                        modified_by=getattr(self, '_modified_by', None),
+                    )
 
     def clean(self):
         super().clean()
@@ -411,49 +415,14 @@ class TransferRequest(models.Model):
         return f'{self.student.full_name}: {self.from_group} → {self.to_group}'
 
 
-class TransferRequestLog(models.Model):
+class FieldChangeLog(models.Model):
     class Meta:
-        verbose_name = _('История заявки')
-        verbose_name_plural = _('Истории заявок')
         ordering = ['-timestamp']
 
-    transfer_request = models.ForeignKey(
-        TransferRequest,
-        on_delete=models.CASCADE,
-        related_name='logs',
-        verbose_name=_('Заявка на перевод')
-    )
-    timestamp = models.DateTimeField(
-        _('Время действия'),
-        default=timezone.now,
-        editable=False
-    )
-    # noinspection PyUnresolvedReferences
-    old_status = models.CharField(
-        _('Старый статус'),
-        choices=TransferRequest.Status.choices
-    )
-    # noinspection PyUnresolvedReferences
-    new_status = models.CharField(
-        _('Новый статус'),
-        choices=TransferRequest.Status.choices
-    )
-    performed_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        verbose_name=_('Кем выполнено')
-    )
-    comment = models.TextField(
-        _('Комментарий'),
-        null=True,
-        blank=True
-    )
-
-    def __str__(self):
-        return (
-            f'[{self.timestamp:%d-%m-%Y %H:%M}] '
-            f'{self.get_old_status_display()} → {self.get_new_status_display()}'
-            f'{f' ({self.performed_by})' if self.performed_by else ''}'
-        )
+    content_type = models.ForeignKey('contenttypes.ContentType', on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    field_name = models.CharField(max_length=100)
+    old_value = models.TextField(null=True, blank=True)
+    new_value = models.TextField(null=True, blank=True)
+    modified_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
+    timestamp = models.DateTimeField(default=timezone.now)

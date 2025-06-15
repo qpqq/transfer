@@ -258,6 +258,7 @@ def approve_transfer(request, pk):
     req.comment_teacher = comment
 
     req.status = TransferRequest.Status.WAITING_ADMIN
+    req._modified_by = request.user
     req.save()
 
     return JsonResponse({
@@ -285,6 +286,7 @@ def reject_transfer(request, pk):
     req.comment_teacher = prefix + f'«{comment}»'
 
     req.status = TransferRequest.Status.REJECTED
+    req._modified_by = request.user
     req.save()
 
     return JsonResponse({

@@ -1,12 +1,25 @@
 from django.contrib import admin
 from django.contrib import messages
+from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
+from django.db.models import ForeignKey
 from django.shortcuts import redirect, render, get_object_or_404
 from django.urls import path, reverse
 from django.utils.translation import gettext_lazy as _
 
 from .forms import StudentImportForm, GroupImportForm
-from .models import Settings, Faculty, Department, Group, Teacher, Student, Subject, SubjectGroup, TransferRequest
+from .models import (
+    Settings,
+    Faculty,
+    Department,
+    Group,
+    Teacher,
+    Student,
+    Subject,
+    SubjectGroup,
+    TransferRequest,
+    FieldChangeLog
+)
 
 
 @admin.register(Settings)
@@ -217,22 +230,61 @@ class TransferRequestAdmin(admin.ModelAdmin):
     change_form_template = 'administration/transferrequest_change_form.html'
 
     def save_model(self, request, obj, form, change):
-        if not change or 'status' in form.changed_data:
-            obj._modified_by = request.user
-
+        obj._modified_by = request.user
         super().save_model(request, obj, form, change)
 
     def change_view(self, request, object_id, form_url='', extra_context=None):
-        transfer_request = get_object_or_404(TransferRequest, pk=object_id)
-        logs = transfer_request.logs.all().order_by('-timestamp')
+        EMPTY_FIELD_STRING = ' '
 
         extra_context = extra_context or {}
-        extra_context['logs'] = logs
 
-        return super().change_view(
-            request, object_id, form_url,
-            extra_context=extra_context
-        )
+        tr = get_object_or_404(TransferRequest, pk=object_id)
+        ct = ContentType.objects.get_for_model(TransferRequest)
+        logs = FieldChangeLog.objects.filter(
+            content_type=ct,
+            object_id=tr.pk
+        ).order_by('-timestamp')
+
+        entries = []
+        for log in logs:
+            name = log.field_name
+
+            field = None
+            for f in TransferRequest._meta.get_fields():
+                if getattr(f, 'attname', None) == name:
+                    field = f
+                    break
+
+            if not field:
+                for f in TransferRequest._meta.get_fields():
+                    if f.name == name:
+                        field = f
+                        break
+
+            if isinstance(field, ForeignKey) and field and log.old_value:
+                rel_model = field.remote_field.model
+                old_obj = rel_model.objects.filter(pk=log.old_value).first() if log.old_value else None
+                new_obj = rel_model.objects.filter(pk=log.new_value).first() if log.new_value else None
+                old = str(old_obj) if old_obj else _(EMPTY_FIELD_STRING)
+                new = str(new_obj) if new_obj else _(EMPTY_FIELD_STRING)
+            else:
+                old = log.old_value if log.old_value not in (None, '') else _(EMPTY_FIELD_STRING)
+                new = log.new_value if log.new_value not in (None, '') else _(EMPTY_FIELD_STRING)
+
+            by = ''
+            if log.modified_by:
+                by = log.modified_by.get_full_name() if log.modified_by.get_full_name() else log.modified_by.username
+
+            entries.append({
+                'timestamp': log.timestamp,
+                'label': str(field.verbose_name).capitalize() if field else name,
+                'old': old,
+                'new': new,
+                'modified_by': by,
+            })
+
+        extra_context['field_logs'] = entries
+        return super().change_view(request, object_id, form_url, extra_context=extra_context)
 
     @admin.action(description=_('Одобрить выделенные заявки'))
     def approve_requests(self, request, queryset):
