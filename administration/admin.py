@@ -267,6 +267,9 @@ class TransferRequestAdmin(admin.ModelAdmin):
                 new_obj = rel_model.objects.filter(pk=log.new_value).first() if log.new_value else None
                 old = str(old_obj) if old_obj else _(EMPTY_FIELD_STRING)
                 new = str(new_obj) if new_obj else _(EMPTY_FIELD_STRING)
+            elif name == 'status':
+                old = TransferRequest.Status(log.old_value).label if log.old_value else _(EMPTY_FIELD_STRING)
+                new = TransferRequest.Status(log.new_value).label if log.new_value else _(EMPTY_FIELD_STRING)
             else:
                 old = log.old_value if log.old_value not in (None, '') else _(EMPTY_FIELD_STRING)
                 new = log.new_value if log.new_value not in (None, '') else _(EMPTY_FIELD_STRING)
