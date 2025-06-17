@@ -80,7 +80,6 @@ def cabinet_view(request):
 
 def teacher_view(request):
     teacher_pk = request.session.get('teacher_pk')
-    print(teacher_pk)
     if not teacher_pk:
         return redirect('portal:login')
 
@@ -243,6 +242,7 @@ def approve_or_reject(request, pk):
             'message': _('У вас нет прав на действия для этой заявки.')
         }, status=403)
 
+    req._modified_by = teacher
     return req
 
 
@@ -258,7 +258,6 @@ def approve_transfer(request, pk):
     req.comment_teacher = comment
 
     req.status = TransferRequest.Status.WAITING_ADMIN
-    req._modified_by = request.user
     req.save()
 
     return JsonResponse({
@@ -286,7 +285,6 @@ def reject_transfer(request, pk):
     req.comment_teacher = prefix + f'«{comment}»'
 
     req.status = TransferRequest.Status.REJECTED
-    req._modified_by = request.user
     req.save()
 
     return JsonResponse({

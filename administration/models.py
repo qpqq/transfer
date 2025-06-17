@@ -1,7 +1,7 @@
 from collections import defaultdict
 from datetime import datetime
 
-from django.conf import settings
+from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
@@ -155,6 +155,9 @@ class Teacher(models.Model):
     email = models.EmailField(_('Адрес электронной почты'), unique=True)
 
     def __str__(self):
+        return self.full_name
+
+    def get_full_name(self):
         return self.full_name
 
 
@@ -397,6 +400,7 @@ class TransferRequest(models.Model):
                 old_val = getattr(old, name)
                 new_val = getattr(self, name)
                 if old_val != new_val:
+                    print(getattr(self, '_modified_by', None))
                     FieldChangeLog.objects.create(
                         content_type=ContentType.objects.get_for_model(self),
                         object_id=self.pk,
@@ -419,10 +423,22 @@ class FieldChangeLog(models.Model):
     class Meta:
         ordering = ['-timestamp']
 
-    content_type = models.ForeignKey('contenttypes.ContentType', on_delete=models.CASCADE)
+    content_type = models.ForeignKey(
+        ContentType,
+        on_delete=models.CASCADE,
+        related_name='field_change_logs'
+    )
     object_id = models.PositiveIntegerField()
     field_name = models.CharField(max_length=100)
     old_value = models.TextField(null=True, blank=True)
     new_value = models.TextField(null=True, blank=True)
-    modified_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
+    modifier_content_type = models.ForeignKey(
+        ContentType,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='field_change_logs_modifier'
+    )
+    modifier_object_id = models.PositiveIntegerField(null=True, blank=True)
+    modified_by = GenericForeignKey('modifier_content_type', 'modifier_object_id')
     timestamp = models.DateTimeField(default=timezone.now)
