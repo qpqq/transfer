@@ -1,3 +1,4 @@
+from django.db.models import Prefetch
 from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.shortcuts import render
@@ -88,18 +89,26 @@ def teacher_view(request):
         request.session.pop('teacher_pk', None)
         return redirect('portal:login')
 
-    subject_groups = (
-        SubjectGroup.objects
-        .filter(teachers=teacher)
-        .select_related('subject')
-        .prefetch_related('students')
-    )
-
     transfer_requests = (
         TransferRequest.objects
         .filter(status=TransferRequest.Status.WAITING_TEACHER,
                 to_group__teachers=teacher)
         .select_related('student', 'subject', 'from_group', 'to_group')
+    )
+
+    completed = TransferRequest.objects.filter(
+        status=TransferRequest.Status.COMPLETED
+    ).select_related('student')
+
+    subject_groups = (
+        SubjectGroup.objects
+        .filter(teachers=teacher)
+        .select_related('subject')
+        .prefetch_related(
+            'students',  # текущие
+            Prefetch('outgoing_requests', queryset=completed, to_attr='transferred_from'),
+            Prefetch('incoming_requests', queryset=completed, to_attr='transferred_to'),
+        )
     )
 
     context = {

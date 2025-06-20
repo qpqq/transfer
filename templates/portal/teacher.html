@@ -93,6 +93,8 @@
             <th>{% trans "Предмет" %}</th>
             <th>{% trans "Предметная группа" %}</th>
             <th>{% trans "Студенты в группе" %}</th>
+            <th>{% trans "Переведены из группы" %}</th>
+            <th>{% trans "Переведены в группу" %}</th>
         </tr>
         </thead>
         <tbody>
@@ -100,6 +102,7 @@
             <tr>
                 <td>{{ group.subject.name }}</td>
                 <td>{{ group }}</td>
+                <!-- текущие -->
                 <td>
                     {% if group.students.all %}
                         <ol>
@@ -108,8 +111,33 @@
                             {% endfor %}
                         </ol>
                     {% else %}
-                        <em>{% trans "В группе нет студентов" %}</em>
+                        <em>—</em>
                     {% endif %}
+                </td>
+                <!-- Переведены из группы -->
+                <td>
+                    {% if group.transferred_from %}
+                        <ol>
+                            {% for req in group.transferred_from %}
+                                <li>{{ req.student.full_name }}</li>
+                            {% endfor %}
+                        </ol>
+                    {% else %}
+                        <em>—</em>
+                    {% endif %}
+                </td>
+                <!-- Переведены в группу -->
+                <td>
+                    {% if group.transferred_to %}
+                        <ol>
+                            {% for req in group.transferred_to %}
+                                <li>{{ req.student.full_name }}</li>
+                            {% endfor %}
+                        </ol>
+                    {% else %}
+                        <em>—</em>
+                    {% endif %}
+                </td>
                 </td>
             </tr>
         {% endfor %}
