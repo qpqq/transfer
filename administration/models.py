@@ -10,6 +10,7 @@ from django.utils.translation import gettext_lazy as _
 
 from .enums import EducationSystem, Sex, Semester, Status
 from .settings import Settings
+from .utils import current_semester, current_year
 
 
 class Faculty(models.Model):
@@ -124,17 +125,6 @@ class Subject(models.Model):
         verbose_name = _('Предмет')
         verbose_name_plural = _('Предметы')
         ordering = ['-year', 'semester', 'course', 'faculty', 'department']
-
-    @staticmethod
-    def current_semester():
-        if timezone.now().month > 10 or timezone.now().month < 5:
-            return Semester.spring
-
-        return Semester.fall
-
-    @staticmethod
-    def current_year():
-        return timezone.now().year
 
     name = models.CharField(_('Предмет'))
     department = models.ForeignKey(
