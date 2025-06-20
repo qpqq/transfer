@@ -1,28 +1,44 @@
 {% extends "admin/base_site.html" %}
 {% load i18n %}
+{% load static %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css"
+          href="{% static 'admin/css/base.css' %}"/>
+    <link rel="stylesheet" type="text/css"
+          href="{% static 'admin/css/forms.css' %}"/>
+    <link rel="stylesheet" type="text/css"
+          href="{% static 'admin/css/responsive.css' %}"/>
+{% endblock %}
 
 {% block content %}
-    <h1>
-        {% blocktrans with grp_name=original.name %}
-            Создать предметную группу из учебной группы «{{ grp_name }}»
-        {% endblocktrans %}
-    </h1>
+    <div class="app-{{ opts.app_label }} model-{{ opts.model_name }} change-form-module">
+        <h1 class="module-header">
+            {% blocktrans with grp_name=original.name %}
+                Создать предметную группу из учебной группы «{{ grp_name }}»
+            {% endblocktrans %}
+        </h1>
 
-    <form method="post">{% csrf_token %}
-        <div class="form-row">
-            <label for="id_subject">{% trans "Предмет" %}</label>
-            <select name="subject" id="id_subject">
-                {% for subj in subjects %}
-                    <option value="{{ subj.pk }}">{{ subj.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
+        <div class="module">
+            <form method="post" novalidate>{% csrf_token %}
+                <div class="form-row field-subject">
+                    <label for="id_subject" class="required">{% trans "Предмет" %}:</label>
+                    <div class="related-widget-wrapper">
+                        <select name="subject" id="id_subject" class="vSelect" required>
+                            {% for subj in subjects %}
+                                <option value="{{ subj.pk }}">{{ subj.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
 
-        <div class="buttons">
-            <button type="submit" class="default">{% trans "Создать" %}</button>
-            <a href="{% url 'admin:administration_group_change' original.pk %}" class="button cancel-link">
-                {% trans "Отмена" %}
-            </a>
+                <div class="submit-row">
+                    <input type="submit" value="{% trans 'Создать' %}" class="default"/>
+                    <input type="submit" href="{% url 'admin:administration_group_change' original.pk %}"
+                           value="{% trans 'Отмена' %}"/>
+                </div>
+            </form>
         </div>
-    </form>
+    </div>
 {% endblock %}
