@@ -140,7 +140,7 @@ class Student(models.Model):
         verbose_name=_('Пол')
     )
     birthdate = models.DateField(_('Дата рождения'))
-    email = models.EmailField(_('Адрес электронной почты физтех'))  # TODO unique=True
+    email = models.EmailField(_('Адрес электронной почты физтех'), unique=True)
 
     def __str__(self):
         return self.full_name
