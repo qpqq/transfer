@@ -124,7 +124,8 @@ class Student(models.Model):
     full_name = models.CharField(_('Студент'))
     groups = models.ManyToManyField(
         Group,
-        verbose_name=_('Группы')
+        verbose_name=_('Группы'),
+        related_name='students'
     )
     departments = models.ManyToManyField(
         Department,

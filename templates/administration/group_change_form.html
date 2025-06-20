@@ -1,0 +1,25 @@
+{% extends "admin/change_form.html" %}
+{% load i18n %}
+
+{% block object-tools %}
+    <style>
+        .add-link {
+            margin-bottom: 8px;
+        }
+    </style>
+
+    {{ block.super }}
+
+    <li class="add-link">
+        {% if original.pk %}
+            <a href="{% url 'admin:administration_group_make_subjectgroup' original.id %}" class="addlink">
+                {% trans "Сформировать учебные группы" %}
+            </a>
+        {% else %}
+            <a href="#" class="addlink"
+               onclick="alert('{% trans "Сначала нужно создать и сохранить учебную группу." %}'); return false;">
+                {% trans "Сформировать учебные группы" %}
+            </a>
+        {% endif %}
+    </li>
+{% endblock %}

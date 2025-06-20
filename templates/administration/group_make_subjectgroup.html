@@ -1,0 +1,28 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+    <h1>
+        {% blocktrans with grp_name=original.name %}
+            Создать предметную группу из учебной группы «{{ grp_name }}»
+        {% endblocktrans %}
+    </h1>
+
+    <form method="post">{% csrf_token %}
+        <div class="form-row">
+            <label for="id_subject">{% trans "Предмет" %}</label>
+            <select name="subject" id="id_subject">
+                {% for subj in subjects %}
+                    <option value="{{ subj.pk }}">{{ subj.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="buttons">
+            <button type="submit" class="default">{% trans "Создать" %}</button>
+            <a href="{% url 'admin:administration_group_change' original.pk %}" class="button cancel-link">
+                {% trans "Отмена" %}
+            </a>
+        </div>
+    </form>
+{% endblock %}

@@ -12,7 +12,7 @@
 
     <li class="add-link">
         {% if original.pk %}
-            <a href="{% url 'admin:administration_subject_make_groups' original.id %}" class="addlink">
+            <a href="{% url 'admin:administration_subjectgroup_make_groups' original.id %}" class="addlink">
                 {% trans "Сформировать учебные группы" %}
             </a>
         {% else %}

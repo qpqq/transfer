@@ -81,15 +81,23 @@ class GroupAdmin(admin.ModelAdmin):
     search_fields = ('name', 'code', 'faculty__name', 'department__name')
 
     change_list_template = 'administration/group_changelist.html'
+    change_form_template = 'administration/group_change_form.html'
 
     def get_urls(self):
-        urls = super().get_urls()
-
         custom_urls = [
-            path('import/', self.admin_site.admin_view(self.import_view), name='administration_group_import')
+            path(
+                'import/',
+                self.admin_site.admin_view(self.import_view),
+                name='administration_group_import'
+            ),
+            path(
+                '<int:object_id>/make-subjectgroup/',
+                self.admin_site.admin_view(self.make_subjectgroup),
+                name='administration_group_make_subjectgroup',
+            )
         ]
 
-        return custom_urls + urls
+        return custom_urls + super().get_urls()
 
     def import_view(self, request):
         if request.method == 'POST':
@@ -122,6 +130,36 @@ class GroupAdmin(admin.ModelAdmin):
         }
 
         return render(request, 'administration/group_import.html', context)
+
+    def make_subjectgroup(self, request, object_id):
+        group_obj = self.get_object(request, object_id)
+
+        if request.method == 'POST':
+            subject_id = request.POST.get('subject')
+            subject = Subject.objects.get(pk=subject_id)
+
+            sg = SubjectGroup.objects.create(subject=subject)
+            students = group_obj.students.all()
+            sg.students.set(students)
+
+            self.message_user(
+                request,
+                _('Создана предметная группа «%(sg)s» с %(n)d студентами.') % {
+                    'sg': sg, 'n': students.count()
+                },
+                level=messages.SUCCESS
+            )
+            return redirect(
+                reverse('admin:administration_subjectgroup_change', args=[sg.pk])
+            )
+
+        subjects = Subject.objects.all()
+        context = {
+            **self.admin_site.each_context(request),
+            'original': group_obj,
+            'subjects': subjects,
+        }
+        return render(request, 'administration/group_make_subjectgroup.html', context)
 
 
 @admin.register(Student)
@@ -195,14 +233,14 @@ class SubjectAdmin(admin.ModelAdmin):
     list_display = ('name', 'department', 'faculty', 'course', 'semester', 'year')
     search_fields = ('name', 'department__name', 'faculty__name', 'course', 'year')
 
-    change_form_template = 'administration/subject_change_form.html'
+    change_form_template = 'administration/subjectgroup_change_form.html'
 
     def get_urls(self):
         custom_urls = [
             path(
                 '<int:object_id>/make-groups/',
                 self.admin_site.admin_view(self.make_groups),
-                name='administration_subject_make_groups',
+                name='administration_subjectgroup_make_groups',
             ),
         ]
         return custom_urls + super().get_urls()
