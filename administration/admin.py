@@ -9,6 +9,7 @@ from django.shortcuts import redirect, render, get_object_or_404
 from django.urls import path, reverse
 from django.utils.translation import gettext_lazy as _
 
+from .enums import Status
 from .forms import StudentImportForm, GroupImportForm
 from .models import (
     Settings,
@@ -351,8 +352,8 @@ class TransferRequestAdmin(admin.ModelAdmin):
                 old = str(old_obj) if old_obj else _(EMPTY_FIELD_STRING)
                 new = str(new_obj) if new_obj else _(EMPTY_FIELD_STRING)
             elif name == 'status':
-                old = TransferRequest.Status(log.old_value).label if log.old_value else _(EMPTY_FIELD_STRING)
-                new = TransferRequest.Status(log.new_value).label if log.new_value else _(EMPTY_FIELD_STRING)
+                old = Status(log.old_value).label if log.old_value else _(EMPTY_FIELD_STRING)
+                new = Status(log.new_value).label if log.new_value else _(EMPTY_FIELD_STRING)
             else:
                 old = log.old_value if log.old_value not in (None, 'None', '') else _(EMPTY_FIELD_STRING)
                 new = log.new_value if log.new_value not in (None, 'None', '') else _(EMPTY_FIELD_STRING)

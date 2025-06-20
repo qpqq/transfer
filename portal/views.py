@@ -5,6 +5,7 @@ from django.shortcuts import render
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_http_methods
 
+from administration.enums import Status
 from administration.models import Student, SubjectGroup, Subject, TransferRequest, Teacher, evaluate_conditions
 from .forms import EmailLoginForm
 
@@ -96,13 +97,13 @@ def teacher_view(request):
 
     transfer_requests = (
         TransferRequest.objects
-        .filter(status=TransferRequest.Status.WAITING_TEACHER,
+        .filter(status=Status.WAITING_TEACHER,
                 to_group__teachers=teacher)
         .select_related('student', 'subject', 'from_group', 'to_group')
     )
 
     completed = TransferRequest.objects.filter(
-        status=TransferRequest.Status.COMPLETED
+        status=Status.COMPLETED
     ).select_related('student')
 
     subject_groups = (
@@ -196,14 +197,14 @@ def transfer_view(request, subject_pk):
     restrictions = evaluate_conditions(from_group, to_group)
 
     if restrictions:
-        status = TransferRequest.Status.PENDING
+        status = Status.PENDING
         response = JsonResponse({
             'status': 'success',
             'message': _(f'Ваша заявка поставлена в очередь, так как {', '.join(restrictions)}.')
         })
 
     else:
-        status = TransferRequest.Status.WAITING_TEACHER
+        status = Status.WAITING_TEACHER
         response = JsonResponse({
             'status': 'success',
             'message': _('Ваша заявка на перевод отправлена.')
@@ -246,7 +247,7 @@ def approve_or_reject(request, pk):
             'message': _('Заявка не найдена.')
         }, status=404)
 
-    if req.status != TransferRequest.Status.WAITING_TEACHER:
+    if req.status != Status.WAITING_TEACHER:
         return JsonResponse({
             'status': 'error',
             'message': _('Заявка не ожидает действия от преподавателя.')
@@ -273,7 +274,7 @@ def approve_transfer(request, pk):
     comment = request.POST.get('comment', '').strip()
     req.comment_teacher = comment
 
-    req.status = TransferRequest.Status.WAITING_ADMIN
+    req.status = Status.WAITING_ADMIN
     req.save()
 
     return JsonResponse({
@@ -300,7 +301,7 @@ def reject_transfer(request, pk):
     prefix = _('Заявка отклонена преподавателем. Комментарий от преподавателя: ')
     req.comment_teacher = prefix + f'«{comment}»'
 
-    req.status = TransferRequest.Status.REJECTED
+    req.status = Status.REJECTED
     req.save()
 
     return JsonResponse({

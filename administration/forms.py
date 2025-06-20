@@ -7,6 +7,7 @@ from django.core.validators import FileExtensionValidator
 from django.db import transaction
 from django.utils.translation import gettext_lazy as _
 
+from .enums import EducationSystem, Sex
 from .models import Faculty, Department, Group, Student
 
 
@@ -87,9 +88,9 @@ class StudentImportForm(forms.Form):
 
                 sex = ''
                 if sex_text.lower() == 'мужской':
-                    sex = Student.Sex.male
+                    sex = Sex.male
                 elif sex_text.lower() == 'женский':
-                    sex = Student.Sex.female
+                    sex = Sex.female
 
                 group_obj = Group.objects.filter(name=group_name).first()
 
@@ -236,9 +237,9 @@ class GroupImportForm(forms.Form):
 
                 edu = None
                 if edu_text.lower() == 'очная':
-                    edu = Group.EducationSystem.regular
+                    edu = EducationSystem.regular
                 elif edu_text.lower() == 'заочная':
-                    edu = Group.EducationSystem.online
+                    edu = EducationSystem.online
 
                 try:
                     grp = Group.objects.get(code=code)

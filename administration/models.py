@@ -9,6 +9,8 @@ from django.db.models import Q
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
+from .enums import EducationSystem, Sex, Semester, Status
+
 
 class Settings(models.Model):
     class Meta:
@@ -77,10 +79,6 @@ class Group(models.Model):
         verbose_name_plural = _('Учебные группы')
         ordering = ['-code']
 
-    class EducationSystem(models.TextChoices):
-        regular = 'regular', _('Очная')
-        online = 'online', _('Заочная')
-
     archive = models.BooleanField(_('Архивная'))
     name = models.CharField(_('Наименование'))
     code = models.PositiveIntegerField(_('Код'), unique=True)
@@ -116,10 +114,6 @@ class Student(models.Model):
         verbose_name = _('Студент')
         verbose_name_plural = _('Студенты')
         ordering = ['full_name']
-
-    class Sex(models.TextChoices):
-        male = 'M', _('Мужской')
-        female = 'F', _('Женский')
 
     full_name = models.CharField(_('Студент'))
     groups = models.ManyToManyField(
@@ -169,16 +163,12 @@ class Subject(models.Model):
         verbose_name_plural = _('Предметы')
         ordering = ['-year', 'semester', 'course', 'faculty', 'department']
 
-    class Semester(models.TextChoices):
-        fall = 'F', _('Осенний')
-        spring = 'S', _('Весенний')
-
     @staticmethod
     def current_semester():
         if timezone.now().month > 10 or timezone.now().month < 5:
-            return Subject.Semester.spring
+            return Semester.spring
 
-        return Subject.Semester.fall
+        return Semester.fall
 
     @staticmethod
     def current_year():
@@ -298,13 +288,6 @@ class TransferRequest(models.Model):
         verbose_name_plural = _('Заявки на перевод')
         ordering = ['-created_at']
 
-    class Status(models.TextChoices):
-        PENDING = 'pending', _('В очереди')
-        WAITING_TEACHER = 'waiting_teacher', _('Ждет одобрения преподавателем')
-        WAITING_ADMIN = 'waiting_admin', _('Ждет одобрения администратором')
-        COMPLETED = 'completed', _('Выполнена')
-        REJECTED = 'rejected', _('Отклонено')
-
     code = models.CharField(
         _('Код заявки'),
         unique=True,
@@ -366,7 +349,7 @@ class TransferRequest(models.Model):
     )
 
     def complete(self):
-        if self.status == self.Status.COMPLETED:
+        if self.status == Status.COMPLETED:
             return
 
         with transaction.atomic():
@@ -374,20 +357,20 @@ class TransferRequest(models.Model):
                 self.from_group.students.remove(self.student)
                 self.to_group.students.add(self.student)
 
-            self.status = TransferRequest.Status.COMPLETED
+            self.status = Status.COMPLETED
             self.save()
 
     def reject(self):
-        if self.status == self.Status.COMPLETED:
+        if self.status == Status.COMPLETED:
             return
-        elif self.status == self.Status.REJECTED:
+        elif self.status == Status.REJECTED:
             return
 
-        self.status = TransferRequest.Status.REJECTED
+        self.status = Status.REJECTED
         self.save()
 
     def undo(self):
-        if self.status != self.Status.COMPLETED and self.status != self.Status.REJECTED:
+        if self.status != Status.COMPLETED and self.status != Status.REJECTED:
             return
 
         with transaction.atomic():
@@ -395,7 +378,7 @@ class TransferRequest(models.Model):
                 self.to_group.students.remove(self.student)
                 self.from_group.students.add(self.student)
 
-            self.status = TransferRequest.Status.WAITING_ADMIN
+            self.status = Status.WAITING_ADMIN
             self.save()
 
     def save(self, *args, **kwargs):
@@ -447,7 +430,7 @@ class TransferRequest(models.Model):
 
             old_status = getattr(old, 'status')
             new_status = getattr(self, 'status')
-            if new_status == TransferRequest.Status.COMPLETED and old_status != TransferRequest.Status.COMPLETED:
+            if new_status == Status.COMPLETED and old_status != Status.COMPLETED:
                 process_pending_requests_for_groups([
                     self.from_group_id,
                     self.to_group_id,
@@ -455,7 +438,7 @@ class TransferRequest(models.Model):
 
     def clean(self):
         super().clean()
-        if self.status == TransferRequest.Status.REJECTED and not self.comment:
+        if self.status == Status.REJECTED and not self.comment:
             raise ValidationError({'comment': _('Комментарий обязателен при отклонении заявки')})
 
     def __str__(self):
@@ -507,7 +490,7 @@ def evaluate_conditions(from_group: SubjectGroup, to_group: SubjectGroup):
 
 def process_pending_requests_for_groups(group_ids: list[int]):
     pending_qs = TransferRequest.objects.filter(
-        status=TransferRequest.Status.PENDING
+        status=Status.PENDING
     ).filter(
         Q(from_group_id__in=group_ids) | Q(to_group_id__in=group_ids)
     )
@@ -515,5 +498,5 @@ def process_pending_requests_for_groups(group_ids: list[int]):
     for req in pending_qs.select_related('student', 'from_group', 'to_group'):
         errors = evaluate_conditions(req.from_group, req.to_group)
         if not errors:
-            req.status = TransferRequest.Status.WAITING_TEACHER
+            req.status = Status.WAITING_TEACHER
             req.save()
