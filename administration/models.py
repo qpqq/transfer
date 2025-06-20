@@ -315,6 +315,12 @@ class TransferRequest(models.Model):
         default=Status.PENDING,
         editable=False
     )
+    reason = models.TextField(
+        _('Прична студента'),
+        null=True,
+        blank=True,
+        editable=False
+    )
     comment_teacher = models.TextField(
         _('Комментарий преподавателя'),
         null=True,

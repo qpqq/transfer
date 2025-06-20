@@ -169,6 +169,27 @@
     </div>
 {% endfor %}
 
+<!-- Модалка для ввода причины подачи заявки -->
+<div id="transfer-modal" class="modal-overlay">
+    <div class="modal-content">
+        <span class="modal-close" id="transfer-close">&times;</span>
+        <div class="modal-header">
+            <h2>{% trans "Причина подачи заявки" %}</h2>
+        </div>
+        <textarea
+                id="transfer-reason"
+                rows="4"
+                style="width: 100%;"
+                placeholder="{% trans 'Укажите причину подачи заявки' %}"
+        ></textarea>
+        <div id="transfer-error" class="error-message"></div>
+        <br>
+        <button type="button" id="transfer-submit-btn">
+            {% trans "Отправить заявку" %}
+        </button>
+    </div>
+</div>
+
 <div id="success-popup" class="modal-overlay">
     <div class="modal-content popup-success">
         <span class="modal-close" id="success-close">&times;</span>
@@ -178,126 +199,129 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        document.querySelectorAll('.open-modal-btn').forEach(function (btn) {
+        let pendingSubj = null;
+        let pendingGrp = null;
+
+        // Открываем модалку выбора группы
+        document.querySelectorAll('.open-modal-btn').forEach(btn =>
             btn.addEventListener('click', function () {
-                const subjId = this.getAttribute('data-subject-id');
-                const modal = document.getElementById(`modal-${subjId}`);
-                if (modal) {
-                    modal.style.display = 'flex';
-                }
-            });
-        });
+                const subjId = this.dataset.subjectId;
+                document.getElementById(`modal-${subjId}`).style.display = 'flex';
+            })
+        );
 
-        document.querySelectorAll('.modal-close').forEach(function (span) {
+        // Закрытие «общих» модалок
+        document.querySelectorAll('.modal-close').forEach(span =>
             span.addEventListener('click', function () {
-                const subjId = this.getAttribute('data-subject-id');
-                const modal = document.getElementById(`modal-${subjId}`);
-                if (modal) {
-                    modal.style.display = 'none';
+                const id = this.id;
+                if (id === 'transfer-close') {
+                    document.getElementById('transfer-modal').style.display = 'none';
+                    clearTransferError();
+                } else {
+                    const subjId = this.dataset.subjectId;
+                    document.getElementById(`modal-${subjId}`).style.display = 'none';
                 }
-            });
-        });
+            })
+        );
 
-        document.querySelectorAll('.modal-overlay').forEach(function (overlay) {
+        // Закрытие при клике вне контента
+        document.querySelectorAll('.modal-overlay').forEach(overlay =>
             overlay.addEventListener('click', function (e) {
-                if (e.target === overlay) {
-                    overlay.style.display = 'none';
+                if (e.target === this) {
+                    this.style.display = 'none';
+                    if (this.id === 'transfer-modal') clearTransferError();
                 }
-            });
-        });
+            })
+        );
 
-        document.getElementById('success-close').addEventListener('click', function () {
-            {#document.getElementById('success-popup').style.display = 'none';#}
+        // При клике на «Подать заявление» — не сразу fetch, а сначала показать модалку
+        document.querySelectorAll('.do-transfer-btn').forEach(btn =>
+            btn.addEventListener('click', function () {
+                pendingSubj = this.dataset.subjectId;
+                pendingGrp = this.dataset.groupId;
+                document.getElementById('transfer-reason').value = '';
+                document.getElementById('transfer-modal').style.display = 'flex';
+            })
+        );
+
+        // Обработчик закрытия попапа успеха
+        const successPopup = document.getElementById('success-popup');
+        document.getElementById('success-close').addEventListener('click', () => {
+            successPopup.style.display = 'none';
             window.location.reload();
         });
 
-        document.getElementById('success-popup').addEventListener('click', function (e) {
-            if (e.target === this) {
-                {#this.style.display = 'none';#}
+        // Закрываем при клике на оверлей
+        successPopup.addEventListener('click', e => {
+            if (e.target === successPopup) {
+                successPopup.style.display = 'none';
                 window.location.reload();
             }
         });
 
-        document.querySelectorAll('.do-transfer-btn').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                const subjId = this.getAttribute('data-subject-id');
-                const grpId = this.getAttribute('data-group-id');
-                const url = `/transfer/create/${subjId}/`;
-
-                function getCookie(name) {
-                    let cookieValue = null;
-                    if (document.cookie && document.cookie !== '') {
-                        const cookies = document.cookie.split(';');
-                        for (let i = 0; i < cookies.length; i++) {
-                            const cookie = cookies[i].trim();
-                            if (cookie.startsWith(name + '=')) {
-                                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                                break;
-                            }
-                        }
-                    }
-                    return cookieValue;
+        // Отправка заявки с причиной
+        document.getElementById('transfer-submit-btn')
+            .addEventListener('click', function () {
+                const reason = document.getElementById('transfer-reason').value.trim();
+                if (!reason) {
+                    showTransferError('{% trans "Причина подачи заявки обязательна." %}');
+                    return;
                 }
 
+                const url = `/transfer/create/${pendingSubj}/`;
                 const csrftoken = getCookie('csrftoken');
 
-                const errorDiv = document.getElementById(`error-${subjId}`);
-                if (errorDiv) {
-                    errorDiv.style.display = 'none';
-                    errorDiv.textContent = '';
-                }
-
                 const formData = new FormData();
-                formData.append('new_group', grpId);
+                formData.append('new_group', pendingGrp);
+                formData.append('reason', reason);
 
                 fetch(url, {
                     method: 'POST',
                     headers: {'X-CSRFToken': csrftoken},
-                    body: formData,
+                    body: formData
                 })
-                    .then(function (response) {
-                        if (!response.ok) {
-                            return response.json().then(data => {
-                                throw new Error(data.message || '{% trans "Неизвестная ошибка" %}');
-                            });
-                        }
-                        return response.json();
-                    })
-                    .then(function (data) {
-                        if (data.status === 'success') {
-                            const modal = document.getElementById(`modal-${subjId}`);
-                            const errorDiv = document.getElementById(`error-${subjId}`);
-                            if (modal) {
-                                modal.style.display = 'none';
-                            }
-                            if (errorDiv) {
-                                errorDiv.style.display = 'none';
-                                errorDiv.textContent = '';
-                            }
+                    .then(response => response.json().then(data => ({ok: response.ok, data})))
+                    .then(({ok, data}) => {
+                        if (ok && data.status === 'success') {
+                            document.getElementById(`modal-${pendingSubj}`).style.display = 'none';
+                            document.getElementById('transfer-modal').style.display = 'none';
 
                             const successPopup = document.getElementById('success-popup');
-                            const messageEl = document.getElementById('success-message');
-                            messageEl.textContent = data.message;
+                            document.getElementById('success-message').textContent = data.message || 'Заявка успешно отправлена';
                             successPopup.style.display = 'flex';
-
-                        } else if (data.status === 'pending') {
-                            if (errorDiv) {
-                                errorDiv.textContent = data.message;
-                                errorDiv.style.display = 'block';
-                            }
                         } else {
-                            throw new Error(data.message || '{% trans "Неизвестная ошибка" %}');
+                            showTransferError(data.message || '{% trans "Неизвестная ошибка" %}');
                         }
                     })
-                    .catch(function (err) {
-                        const errorDiv = document.getElementById(`error-${subjId}`);
-                        if (errorDiv) {
-                            errorDiv.textContent = err.message;
-                            errorDiv.style.display = 'block';
-                        }
+                    .catch(err => {
+                        showTransferError(err.message);
                     });
             });
-        });
+
+        function showTransferError(msg) {
+            const err = document.getElementById('transfer-error');
+            err.textContent = msg;
+            err.style.display = 'block';
+        }
+
+        function clearTransferError() {
+            const err = document.getElementById('transfer-error');
+            err.textContent = '';
+            err.style.display = 'none';
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                document.cookie.split(';').forEach(cookie => {
+                    cookie = cookie.trim();
+                    if (cookie.startsWith(name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    }
+                });
+            }
+            return cookieValue;
+        }
     });
 </script>
 </body>

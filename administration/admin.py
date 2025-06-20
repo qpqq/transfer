@@ -222,7 +222,7 @@ class SubjectGroupAdmin(admin.ModelAdmin):
 @admin.register(TransferRequest)
 class TransferRequestAdmin(admin.ModelAdmin):
     list_display = ('code', 'student', 'subject', 'from_group', 'to_group', 'status', 'created_at')
-    readonly_fields = ('status', 'comment_teacher', 'created_at')
+    readonly_fields = ('status', 'reason', 'comment_teacher', 'created_at')
     list_filter = ('status', 'created_at')
     search_fields = ('student__full_name', 'subject__name')
     actions = ['approve_requests']

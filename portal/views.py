@@ -143,6 +143,13 @@ def transfer_view(request, subject_pk):
             'message': _('Заявка уже находится в обработке.')
         }, status=200)
 
+    reason = request.POST.get('reason')
+    if not reason:
+        return JsonResponse({
+            'status': 'error',
+            'message': _('Причина подачи заявки обязательна.')
+        }, status=400)
+
     new_group_str = request.POST.get('new_group')
     if not new_group_str or not new_group_str.isdigit():
         return JsonResponse({
@@ -193,7 +200,8 @@ def transfer_view(request, subject_pk):
         subject=subject,
         from_group=from_group,
         to_group=to_group,
-        status=status
+        status=status,
+        reason=reason
     )
 
     return response
