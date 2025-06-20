@@ -8,6 +8,5 @@ class AdministrationConfig(AppConfig):
     verbose_name = _('Переводы')
 
     def ready(self):
-        from .models import Settings
-
-        Settings.load()
+        # noinspection PyUnresolvedReferences
+        import administration.signals

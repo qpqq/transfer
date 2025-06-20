@@ -1,5 +1,7 @@
 from django.contrib import admin
 from django.contrib import messages
+from django.contrib.auth import get_user_model
+from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.db.models import ForeignKey
@@ -20,6 +22,28 @@ from .models import (
     TransferRequest,
     FieldChangeLog
 )
+from .staff import StaffProfile
+
+User = get_user_model()
+admin.site.unregister(User)
+
+
+class StaffProfileInline(admin.StackedInline):
+    model = StaffProfile
+    can_delete = False
+    fk_name = 'user'
+    filter_horizontal = ('departments',)
+    extra = 0
+
+
+@admin.register(User)
+class UserAdmin(DjangoUserAdmin):
+    inlines = (StaffProfileInline,)
+
+    def get_inline_instances(self, request, obj=None):
+        if not obj:
+            return []
+        return super().get_inline_instances(request, obj)
 
 
 @admin.register(Settings)
@@ -228,6 +252,27 @@ class TransferRequestAdmin(admin.ModelAdmin):
     actions = ['approve_requests']
 
     change_form_template = 'administration/transferrequest_change_form.html'
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+
+        prof = getattr(request.user, 'staff_profile', None)
+        if not prof:
+            return qs.none()
+
+        return qs.filter(to_group__subject__department__in=prof.departments.all()).distinct()
+
+    def has_change_permission(self, request, obj=None):
+        if obj is None or request.user.is_superuser:
+            return True
+
+        prof = getattr(request.user, 'staff_profile', None)
+        return prof and (obj.to_group.subject.department in prof.departments.all())
+
+    def has_delete_permission(self, request, obj=None):
+        return self.has_change_permission(request, obj)
 
     def save_model(self, request, obj, form, change):
         obj._modified_by = request.user
