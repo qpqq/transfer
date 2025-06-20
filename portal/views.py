@@ -1,11 +1,10 @@
 from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.shortcuts import render
-from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_http_methods
 
-from administration.models import Student, SubjectGroup, Subject, TransferRequest, Teacher
+from administration.models import Student, SubjectGroup, Subject, TransferRequest, Teacher, evaluate_conditions
 from .forms import EmailLoginForm
 
 
@@ -171,38 +170,33 @@ def transfer_view(request, subject_pk):
         return JsonResponse({
             'status': 'error',
             'message': _('Вы уже состоите в выбранной группе.')  # TODO менять отображение (?)
-        })
-
-    if from_group.students.count() <= from_group.min_students:
-        return JsonResponse({
-            'status': 'error',
-            'message': _(f'В группе не может стать меньше {from_group.min_students} студентов.')
-        })
-
-    if to_group.students.count() >= to_group.max_students:
-        return JsonResponse({
-            'status': 'error',
-            'message': _(f'В группе не может быть больше {to_group.max_students} студентов.')
-        })
-
-    if to_group.deadline and timezone.now() > to_group.deadline:
-        return JsonResponse({
-            'status': 'error',
-            'message': _('Срок подачи заявлений на перевод истёк.')
         }, status=400)
+
+    restrictions = evaluate_conditions(from_group, to_group)
+
+    if restrictions:
+        status = TransferRequest.Status.PENDING
+        response = JsonResponse({
+            'status': 'success',
+            'message': _(f'Ваша заявка поставлена в очередь, так как {', '.join(restrictions)}.')
+        })
+
+    else:
+        status = TransferRequest.Status.WAITING_TEACHER
+        response = JsonResponse({
+            'status': 'success',
+            'message': _('Ваша заявка на перевод отправлена.')
+        })
 
     TransferRequest.objects.create(
         student=student,
         subject=subject,
         from_group=from_group,
         to_group=to_group,
-        status=TransferRequest.Status.WAITING_TEACHER  # TODO
+        status=status
     )
 
-    return JsonResponse({
-        'status': 'success',
-        'message': _('Ваша заявка на перевод отправлена.')
-    })
+    return response
 
 
 def approve_or_reject(request, pk):

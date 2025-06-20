@@ -5,6 +5,7 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
+from django.db.models import Q
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
@@ -258,6 +259,8 @@ class SubjectGroup(models.Model):
 
         super().save(*args, **kwargs)
 
+        process_pending_requests_for_groups([self.pk])
+
     def __str__(self):
         return f'{self.subject.name}{f' - {self.get_teacher_names('')}' if self.get_teacher_names(None) else ''}'
 
@@ -400,7 +403,6 @@ class TransferRequest(models.Model):
                 old_val = getattr(old, name)
                 new_val = getattr(self, name)
                 if old_val != new_val:
-                    print(getattr(self, '_modified_by', None))
                     FieldChangeLog.objects.create(
                         content_type=ContentType.objects.get_for_model(self),
                         object_id=self.pk,
@@ -409,6 +411,14 @@ class TransferRequest(models.Model):
                         new_value=str(new_val),
                         modified_by=getattr(self, '_modified_by', None),
                     )
+
+            old_status = getattr(old, 'status')
+            new_status = getattr(self, 'status')
+            if new_status == TransferRequest.Status.COMPLETED and old_status != TransferRequest.Status.COMPLETED:
+                process_pending_requests_for_groups([
+                    self.from_group_id,
+                    self.to_group_id,
+                ])
 
     def clean(self):
         super().clean()
@@ -442,3 +452,35 @@ class FieldChangeLog(models.Model):
     modifier_object_id = models.PositiveIntegerField(null=True, blank=True)
     modified_by = GenericForeignKey('modifier_content_type', 'modifier_object_id')
     timestamp = models.DateTimeField(default=timezone.now)
+
+
+def evaluate_conditions(from_group: SubjectGroup, to_group: SubjectGroup):
+    errors = []
+
+    # в from_group после ухода студента не меньше min_students
+    if from_group.students.count() <= from_group.min_students:
+        errors.append(f'в группе не может стать меньше {from_group.min_students} студентов')
+
+    # в to_group не больше max_students
+    if to_group.students.count() >= to_group.max_students:
+        errors.append(f'в группе не может быть больше {to_group.max_students} студентов')
+
+    # дедлайн подачи не истек
+    if to_group.deadline and timezone.now() > to_group.deadline:
+        errors.append(f'срок подачи заявлений на перевод истёк')
+
+    return errors
+
+
+def process_pending_requests_for_groups(group_ids: list[int]):
+    pending_qs = TransferRequest.objects.filter(
+        status=TransferRequest.Status.PENDING
+    ).filter(
+        Q(from_group_id__in=group_ids) | Q(to_group_id__in=group_ids)
+    )
+
+    for req in pending_qs.select_related('student', 'from_group', 'to_group'):
+        errors = evaluate_conditions(req.from_group, req.to_group)
+        if not errors:
+            req.status = TransferRequest.Status.WAITING_TEACHER
+            req.save()
