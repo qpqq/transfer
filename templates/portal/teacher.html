@@ -90,18 +90,16 @@
     <table>
         <thead>
         <tr>
-            <th>{% trans "№" %}</th>
-            <th>{% trans "Предметная группа" %}</th>
             <th>{% trans "Предмет" %}</th>
+            <th>{% trans "Предметная группа" %}</th>
             <th>{% trans "Студенты в группе" %}</th>
         </tr>
         </thead>
         <tbody>
         {% for group in subject_groups %}
             <tr>
-                <td>{{ forloop.counter }}</td>
-                <td>{{ group }}</td>
                 <td>{{ group.subject.name }}</td>
+                <td>{{ group }}</td>
                 <td>
                     {% if group.students.all %}
                         <ol>
