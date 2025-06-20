@@ -62,7 +62,12 @@ def cabinet_view(request):
             .prefetch_related('teachers', 'students')
         )
 
-        transfer_request = TransferRequest.objects.filter(student=student, subject=subj).first()
+        transfer_request = (
+            TransferRequest.objects
+            .filter(student=student, subject=subj)
+            .order_by('-created_at')
+            .first()
+        )
 
         data.append({
             'subject': subj,
