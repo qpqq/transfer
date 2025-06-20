@@ -132,7 +132,7 @@ class Student(models.Model):
         verbose_name=_('Кафедры')
     )
     # faculty  # TODO в таблице краткое наименование, непонятно как его привязывать
-    year = models.IntegerField(_('Курс'))
+    year = models.PositiveIntegerField(_('Курс'))
     # noinspection PyUnresolvedReferences
     sex = models.CharField(
         max_length=2,
@@ -166,7 +166,22 @@ class Subject(models.Model):
     class Meta:
         verbose_name = _('Предмет')
         verbose_name_plural = _('Предметы')
-        ordering = ['name']
+        ordering = ['-year', 'semester', 'course', 'faculty', 'department']
+
+    class Semester(models.TextChoices):
+        fall = 'F', _('Осенний')
+        spring = 'S', _('Весенний')
+
+    @staticmethod
+    def current_semester():
+        if timezone.now().month > 10 or timezone.now().month < 5:
+            return Subject.Semester.spring
+
+        return Subject.Semester.fall
+
+    @staticmethod
+    def current_year():
+        return timezone.now().year
 
     name = models.CharField(_('Предмет'))
     department = models.ForeignKey(
@@ -183,11 +198,22 @@ class Subject(models.Model):
         blank=True,
         verbose_name=_('Факультет')
     )
-    year = models.IntegerField(_('Курс'))
+    course = models.PositiveIntegerField(_('Курс'))
+    # noinspection PyUnresolvedReferences
+    semester = models.CharField(
+        max_length=2,
+        choices=Semester.choices,
+        default=current_semester,
+        verbose_name=_('Семестр')
+    )
+    year = models.PositiveIntegerField(
+        default=current_year,
+        verbose_name=_('Год')
+    )
 
     def create_subject_groups(self):
         qs = Student.objects.all()
-        qs = qs.filter(year=self.year) if self.year is not None else qs
+        qs = qs.filter(year=self.course) if self.course is not None else qs
         if self.faculty is not None:
             qs = qs.filter(groups__faculty=self.faculty)
         if self.department is not None:
@@ -212,7 +238,7 @@ class Subject(models.Model):
             f'{self.name}'
             f'{f' - {self.department}' if self.department else ''}'
             f'{f' - {self.faculty}' if self.faculty else ''}'
-            f' - {self.year} курс'
+            f' - {self.course} курс'
         )
 
 

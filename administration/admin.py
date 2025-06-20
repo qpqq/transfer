@@ -168,8 +168,8 @@ class TeacherAdmin(admin.ModelAdmin):
 
 @admin.register(Subject)
 class SubjectAdmin(admin.ModelAdmin):
-    list_display = ('name', 'department', 'faculty', 'year')
-    search_fields = ('name', 'department__name', 'faculty__name', 'year')
+    list_display = ('name', 'department', 'faculty', 'course', 'semester', 'year')
+    search_fields = ('name', 'department__name', 'faculty__name', 'course', 'year')
 
     change_form_template = 'administration/subject_change_form.html'
 
