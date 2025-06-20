@@ -271,8 +271,8 @@ class TransferRequestAdmin(admin.ModelAdmin):
                 old = TransferRequest.Status(log.old_value).label if log.old_value else _(EMPTY_FIELD_STRING)
                 new = TransferRequest.Status(log.new_value).label if log.new_value else _(EMPTY_FIELD_STRING)
             else:
-                old = log.old_value if log.old_value not in (None, '') else _(EMPTY_FIELD_STRING)
-                new = log.new_value if log.new_value not in (None, '') else _(EMPTY_FIELD_STRING)
+                old = log.old_value if log.old_value not in (None, 'None', '') else _(EMPTY_FIELD_STRING)
+                new = log.new_value if log.new_value not in (None, 'None', '') else _(EMPTY_FIELD_STRING)
 
             by = ''
             if log.modified_by:
@@ -347,27 +347,24 @@ class TransferRequestAdmin(admin.ModelAdmin):
     def reject(self, request, object_id):
         transfer_request = self.get_object(request, object_id)
 
-        if not transfer_request.comment:
-            self.message_user(
-                request,
-                _('При отклонении заявки необходимо указывать комментарий'),
-                level=messages.ERROR
-            )
-
-        elif transfer_request.status == transfer_request.Status.COMPLETED:
+        if transfer_request.status == transfer_request.Status.COMPLETED:
             self.message_user(
                 request,
                 _('Нельзя отклонить одобренную заявку'),
                 level=messages.ERROR
             )
-
         elif transfer_request.status == transfer_request.Status.REJECTED:
             self.message_user(
                 request,
                 _('Заявка уже отклонена'),
                 level=messages.ERROR
             )
-
+        elif not transfer_request.comment:
+            self.message_user(
+                request,
+                _('При отклонении заявки необходимо указывать комментарий'),
+                level=messages.ERROR
+            )
         else:
             transfer_request.reject()
 
