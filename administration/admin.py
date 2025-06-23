@@ -411,7 +411,7 @@ class TransferRequestAdmin(admin.ModelAdmin):
     def approve(self, request, object_id):
         transfer_request = self.get_object(request, object_id)
 
-        if transfer_request.status == transfer_request.Status.COMPLETED:
+        if transfer_request.status == Status.COMPLETED:
             self.message_user(
                 request,
                 _('Заявка уже одобрена и перевод выполнен'),
@@ -431,13 +431,13 @@ class TransferRequestAdmin(admin.ModelAdmin):
     def reject(self, request, object_id):
         transfer_request = self.get_object(request, object_id)
 
-        if transfer_request.status == transfer_request.Status.COMPLETED:
+        if transfer_request.status == Status.COMPLETED:
             self.message_user(
                 request,
                 _('Нельзя отклонить одобренную заявку'),
                 level=messages.ERROR
             )
-        elif transfer_request.status == transfer_request.Status.REJECTED:
+        elif transfer_request.status == Status.REJECTED:
             self.message_user(
                 request,
                 _('Заявка уже отклонена'),
@@ -462,8 +462,8 @@ class TransferRequestAdmin(admin.ModelAdmin):
     def undo(self, request, object_id):
         transfer_request = self.get_object(request, object_id)
 
-        if transfer_request.status != transfer_request.Status.COMPLETED \
-                and transfer_request.status != transfer_request.Status.REJECTED:
+        if transfer_request.status != Status.COMPLETED \
+                and transfer_request.status != Status.REJECTED:
             self.message_user(
                 request,
                 _('Заявка должна быть одобрена или отклонена'),

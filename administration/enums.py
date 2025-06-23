@@ -22,4 +22,4 @@ class Status(models.TextChoices):
     WAITING_TEACHER = 'waiting_teacher', _('Ждет одобрения преподавателем')
     WAITING_ADMIN = 'waiting_admin', _('Ждет одобрения администратором')
     COMPLETED = 'completed', _('Выполнена')
-    REJECTED = 'rejected', _('Отклонено')
+    REJECTED = 'rejected', _('Отклонена')
