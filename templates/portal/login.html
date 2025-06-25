@@ -4,22 +4,131 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>{% trans "Вход в личный кабинет" %}</title>
+
+    <!-- Минимальная палитра и типографика МФТИ -->
+    <style>
+        :root {
+            --color-blue: #003092;
+            --color-blue-dark: #001d5a;
+            --color-red: #B90000;
+            --color-gray-light: #EDF0F4;
+            --font-base: 'ALSSirius', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        /* базовая типографика */
+        body {
+            margin: 0;
+            font-family: var(--font-base);
+            font-size: 1rem;
+            line-height: 1.5;
+            color: #212529;
+            background: #fff;
+
+            /* центрируем карточку как на официальных лендингах */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+
+        /* белая карточка с лёгкой тенью — фирменный приём */
+        .auth-card {
+            width: 100%;
+            max-width: 420px;
+            background: #fff;
+            border: 1px solid var(--color-gray-light);
+            border-radius: 1rem;
+            padding: 2rem 1.5rem 2.5rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .05);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin: 0 0 1.5rem;
+            color: var(--color-blue);
+            text-align: center;
+        }
+
+        label {
+            font-weight: 500;
+            display: block;
+            margin-bottom: .25rem;
+        }
+
+        input[type="email"] {
+            width: 100%;
+            padding: .75rem 1rem;
+            border: 1px solid var(--color-gray-light);
+            border-radius: .5rem;
+            font-size: 1rem;
+            transition: border-color .2s;
+        }
+
+        input[type="email"]:focus {
+            outline: none;
+            border-color: var(--color-blue);
+            box-shadow: 0 0 0 .15rem rgba(0, 48, 146, .25);
+        }
+
+        button[type="submit"] {
+            width: 100%;
+            margin-top: 1rem;
+            padding: .75rem 1rem;
+            font-size: 1rem;
+            font-weight: 500;
+            color: #fff;
+            background: var(--color-blue);
+            border: none;
+            border-radius: 100rem;
+            cursor: pointer;
+            transition: background .15s ease-in-out;
+        }
+
+        button[type="submit"]:hover {
+            background: var(--color-blue-dark);
+        }
+
+        /* вывод ошибок формы в фирменном красном */
+        .error {
+            color: var(--color-red);
+            font-size: .875rem;
+        }
+
+        /* На очень узких телефонах снимаем рамку и тень,
+           чтобы форма занимала максимум ширины */
+        @media (max-width: 360px) {
+            .auth-card {
+                padding: 1.25rem 1rem 1.5rem;
+                border: none;
+                box-shadow: none;
+            }
+        }
+    </style>
 </head>
 
 <body>
-<h1>{% trans "Введите ваш e-mail" %}</h1>
-<form action="" method="post" novalidate>
-    {% csrf_token %}
-    {{ form.non_field_errors }}
-    <p>
-        {{ form.email.label_tag }}<br>
-        {{ form.email }}<br>
-        {% for err in form.email.errors %}
-            <span style="color: red;">{{ err }}</span><br>
-        {% endfor %}
-    </p>
-    <button type="submit">{% trans "Войти" %}</button>
-</form>
+<div class="auth-card">
+    <h1>{% trans "Введите ваш e-mail" %}</h1>
+
+    <form method="post" novalidate>
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        <p>
+            {{ form.email.label_tag }}
+            {{ form.email }}
+            {% for err in form.email.errors %}
+                <span class="error">{{ err }}</span>
+            {% endfor %}
+        </p>
+        <button type="submit">{% trans "Войти" %}</button>
+    </form>
+</div>
 </body>
 </html>

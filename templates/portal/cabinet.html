@@ -4,60 +4,184 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>{% trans "Личный кабинет" %}</title>
+
+    <!-- ↓ базовые переменные и глобальный reset -->
     <style>
-        table, th, td {
-            border: 1px solid #666;
-            border-collapse: collapse;
-            padding: 8px;
+        :root {
+            --color-blue: #003092; /* фирменный синий */
+            --color-blue-dark: #001d5a;
+            --color-red: #B90000;
+            --color-gray-light: #EDF0F4;
+            --radius: 1rem;
+            --font: 'ALSSirius', 'Roboto', 'Helvetica', 'Arial', sans-serif;
         }
 
+        /* универсальный reset + border-box, чтобы инпуты/таблицы не «выпирали» */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font);
+            line-height: 1.5;
+            font-size: 1rem;
+            color: #212529;
+            background: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* шапка страницы */
+        header {
+            background: var(--color-blue);
+            color: #fff;
+            padding: 1rem;
+            text-align: center;
+            font-size: 1.25rem;
+            font-weight: 500;
+        }
+
+        main {
+            flex: 1 0 auto;
+            width: 100%;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
+        /* таблица предметов */
+        .subjects {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid var(--color-gray-light);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+
+        .subjects th,
+        .subjects td {
+            padding: .75rem .5rem;
+            text-align: left;
+        }
+
+        .subjects thead {
+            background: var(--color-gray-light);
+        }
+
+        .subjects tbody tr:nth-child(even) {
+            background: #fafafa;
+        }
+
+        .subjects button {
+            padding: .5rem 1rem;
+            border: none;
+            border-radius: 100rem;
+            background: var(--color-blue);
+            color: #fff;
+            cursor: pointer;
+            transition: background .15s;
+        }
+
+        .subjects button:hover {
+            background: var(--color-blue-dark);
+        }
+
+        /* карточная адаптация таблицы < 640 px */
+        @media (max-width: 640px) {
+            .subjects, .subjects thead {
+                display: block;
+            }
+
+            .subjects thead {
+                position: absolute;
+                left: -9999px;
+            }
+
+            .subjects tr {
+                display: flex;
+                flex-direction: column;
+                border-bottom: 1px solid var(--color-gray-light);
+            }
+
+            .subjects td {
+                display: flex;
+                justify-content: space-between;
+                gap: .5rem;
+                padding: .65rem .75rem;
+            }
+
+            .subjects td::before {
+                content: attr(data-label);
+                font-weight: 500;
+                color: #555;
+            }
+        }
+
+        /* модалки */
         .modal-overlay {
             display: none;
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
+            inset: 0;
             z-index: 1000;
+            background: rgba(0, 0, 0, .5);
             justify-content: center;
             align-items: center;
+            padding: 1rem;
+            -webkit-overflow-scrolling: touch; /* iOS плавный скролл */
         }
 
         .modal-content {
+            width: 100%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow: auto;
             background: #fff;
-            padding: 20px;
-            border-radius: 4px;
-            max-width: 550px;
-            width: 90%;
-            max-height: 80%;
-            overflow-y: auto;
+            border-radius: var(--radius);
+            padding: 1.5rem;
             position: relative;
         }
 
         .modal-close {
             position: absolute;
-            top: 8px;
-            right: 12px;
-            font-size: 20px;
-            font-weight: bold;
+            top: .75rem;
+            right: 1rem;
+            font-size: 1.5rem;
             cursor: pointer;
-        }
-
-        .modal-header {
-            margin-bottom: 15px;
-        }
-
-        .modal-header h2 {
-            margin: 0;
-            font-size: 1.2em;
+            color: #666;
+            -webkit-tap-highlight-color: transparent; /* Android ripple off */
         }
 
         .error-message {
-            color: red;
-            margin-top: 10px;
-            display: none;
+            color: var(--color-red);
+            margin-top: .5rem;
+            font-size: .875rem;
+        }
+
+        .modal-content table {
+            border-collapse: separate;
+            border-spacing: 0 .75rem;
+        }
+
+        /* универсальная кнопка во всплывашках */
+        .modal-content button {
+            width: 100%;
+            margin-top: 0;
+            padding: .65rem 1.25rem;
+            border: none;
+            border-radius: 100rem;
+            font-size: 1rem;
+            font-weight: 500;
+            color: #fff;
+            background: var(--color-blue);
+        }
+
+        .modal-content button:hover {
+            background: var(--color-blue-dark);
         }
 
         .popup-success {
@@ -69,44 +193,50 @@
     </style>
 </head>
 <body>
-<h1>{% trans "Личный кабинет студента" %}</h1>
-<p>
-    {% trans "Вы зашли как" %}: <strong>{{ student.full_name }}</strong><br>
-    {% trans "E-mail" %}: <strong>{{ student.email }}</strong>
-</p>
+<header>{% trans "Личный кабинет студента" %}</header>
 
-{% if data %}
-    <table>
-        <thead>
-        <tr>
-            <th>{% trans "Предмет" %}</th>
-            <th>{% trans "Преподаватели" %}</th>
-            <th>{% trans "Действие" %}</th>
-        </tr>
-        </thead>
-        <tbody>
-        {% for row in data %}
+<main>
+    <p style="margin-bottom:1rem;">
+        {% trans "Вы зашли как" %}: <strong>{{ student.full_name }}</strong><br>
+        {% trans "E-mail" %}: <strong>{{ student.email }}</strong>
+    </p>
+
+    {% if data %}
+        <table class="subjects">
+            <thead>
             <tr>
-                <td>{{ row.subject.name }}</td>
-                <td>{{ row.teacher_names }}</td>
-                <td>
-                    <button type="button" class="open-modal-btn" data-subject-id="{{ row.subject.pk }}">
-                        {% trans "Выбрать группу" %}
-                    </button>
-                </td>
+                <th>{% trans "Предмет" %}</th>
+                <th>{% trans "Преподаватели" %}</th>
+                <th>{% trans "Действие" %}</th>
             </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-{% else %}
-    <p>{% trans "Вы пока не состоите ни в одной предметной группе." %}</p>
-{% endif %}
+            </thead>
+            <tbody>
+            {% for row in data %}
+                <tr>
+                    <td data-label="{% trans 'Предмет' %}">{{ row.subject.name }}</td>
+                    <td data-label="{% trans 'Преподаватели' %}">{{ row.teacher_names }}</td>
+                    <td data-label="{% trans 'Действие' %}">
+                        <button type="button"
+                                class="open-modal-btn"
+                                data-subject-id="{{ row.subject.pk }}">
+                            {% trans "Выбрать группу" %}
+                        </button>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>{% trans "Вы пока не состоите ни в одной предметной группе." %}</p>
+    {% endif %}
 
-<p>
-    <a href="{% url 'portal:login' %}?logout=1">
-        {% trans "Выйти" %}
-    </a>
-</p>
+    <p style="margin-top:1rem;">
+        <a href="{% url 'portal:login' %}?logout=1"
+           style="color:var(--color-blue);text-decoration:none;">
+            {% trans "Выйти" %}
+        </a>
+    </p>
+</main>
 
 {% for row in data %}
     <div id="modal-{{ row.subject.pk }}" class="modal-overlay">

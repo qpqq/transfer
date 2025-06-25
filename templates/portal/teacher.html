@@ -4,67 +4,235 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>{% trans "Личный кабинет преподавателя" %}</title>
+
     <style>
-        table, th, td {
-            border: 1px solid #666;
-            border-collapse: collapse;
-            padding: 8px;
+        /* === фирменная палитра + reset =========================================== */
+        :root {
+            --c-blue: #003092; /* основной синий */
+            --c-blue-dark: #001d5a;
+            --c-red: #B90000; /* цвет ошибок */
+            --c-gray: #EDF0F4;
+            --r: 1rem; /* базовый радиус */
+            --f: 'ALSSirius', 'Roboto', 'Helvetica', 'Arial', sans-serif;
         }
 
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--f);
+            line-height: 1.5;
+            color: #212529;
+            background: #fff;
+        }
+
+        /* убираем серый halo-эффект на iOS / Android */
+        button, input {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* === типовая шапка и контейнер ========================================== */
+        header {
+            background: var(--c-blue);
+            color: #fff;
+            text-align: center;
+            padding: 1rem;
+            font-size: 1.25rem;
+            font-weight: 500;
+        }
+
+        main {
+            width: 100%;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
+        /* === ТАБЛИЦА ГРУПП преподавателя (Блок 1) =============================== */
+        .groups {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid var(--c-gray);
+            border-radius: var(--r);
+            overflow: hidden;
+        }
+
+        .groups th, .groups td {
+            padding: .75rem .5rem;
+            vertical-align: top;
+        }
+
+        .groups thead {
+            background: var(--c-gray);
+        }
+
+        .groups tbody tr:nth-child(even) {
+            background: #fafafa;
+        }
+
+        /* список студентов в ячейке */
+        .groups ol {
+            margin: 0 0 0 1.25rem;
+            padding: 0;
+        }
+
+        /* мобильная «карточка» */
+        @media (max-width: 640px) {
+            .groups, .groups thead {
+                display: block;
+            }
+
+            .groups thead {
+                position: absolute;
+                left: -9999px;
+            }
+
+            .groups tr {
+                display: flex;
+                flex-direction: column;
+                border-bottom: 1px solid var(--c-gray);
+            }
+
+            .groups td {
+                display: flex;
+                gap: .5rem;
+                padding: .65rem .75rem;
+            }
+
+            .groups td::before {
+                content: attr(data-label);
+                font-weight: 500;
+                color: #555;
+                width: 45%;
+            }
+        }
+
+        /* === ТАБЛИЦА ЗАЯВОК (Блок 2) =========================================== */
+        .requests {
+            margin-top: 2rem;
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid var(--c-gray);
+            border-radius: var(--r);
+            overflow: hidden;
+        }
+
+        .requests th, .requests td {
+            padding: .65rem .5rem;
+            text-align: left;
+        }
+
+        .requests thead {
+            background: var(--c-gray);
+        }
+
+        .requests button {
+            padding: .45rem 1rem;
+            margin: 0 .25rem 0 0;
+            border: none;
+            border-radius: 100rem;
+            background: var(--c-blue);
+            color: #fff;
+            cursor: pointer;
+            transition: background .15s;
+        }
+
+        .requests button:hover {
+            background: var(--c-blue-dark);
+        }
+
+        @media (max-width: 640px) {
+            .requests, .requests thead {
+                display: block;
+            }
+
+            .requests thead {
+                position: absolute;
+                left: -9999px;
+            }
+
+            .requests tr {
+                display: flex;
+                flex-direction: column;
+                border-bottom: 1px solid var(--c-gray);
+            }
+
+            .requests td {
+                display: flex;
+                gap: .5rem;
+                padding: .6rem .75rem;
+            }
+
+            .requests td::before {
+                content: attr(data-label);
+                font-weight: 500;
+                color: #555;
+                width: 45%;
+            }
+        }
+
+        /* === МОДАЛКИ (Блок 3-5) ================================================= */
         .modal-overlay {
             display: none;
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
+            inset: 0;
             z-index: 1000;
+            background: rgba(0, 0, 0, .5);
             justify-content: center;
             align-items: center;
+            padding: 1rem;
+            -webkit-overflow-scrolling: touch;
         }
 
         .modal-content {
             background: #fff;
-            padding: 20px;
-            border-radius: 4px;
-            max-width: 500px;
-            width: 90%;
-            max-height: 80%;
-            overflow-y: auto;
+            max-width: 600px;
+            width: 100%;
+            max-height: 90vh;
+            overflow: auto;
+            border-radius: var(--r);
+            padding: 1.5rem;
             position: relative;
         }
 
         .modal-close {
             position: absolute;
-            top: 8px;
-            right: 12px;
-            font-size: 20px;
-            font-weight: bold;
+            top: .6rem;
+            right: 1rem;
+            font-size: 1.5rem;
             cursor: pointer;
+            color: #666;
         }
 
-        .modal-header {
-            margin-bottom: 15px;
+        .modal-content button {
+            margin-top: .75rem;
+            padding: .55rem 1.25rem;
+            border: none;
+            border-radius: 100rem;
+            font-weight: 500;
+            color: #fff;
+            background: var(--c-blue);
         }
 
-        .modal-header h2 {
-            margin: 0;
-            font-size: 1.2em;
+        .modal-content button:hover {
+            background: var(--c-blue-dark);
         }
 
         .error-message {
-            color: red;
-            margin-top: 10px;
-            display: none;
+            color: var(--c-red);
+            margin-top: .5rem;
+            font-size: .875rem;
         }
 
         .italic-note {
             font-style: italic;
-            font-size: 0.9em;
+            font-size: .9em;
             color: #555;
-            margin-top: 5px;
         }
 
         .popup-success {
@@ -76,131 +244,120 @@
     </style>
 </head>
 <body>
-<h1>{% trans "Личный кабинет преподавателя" %}</h1>
-<p>
-    {% trans "Вы зашли как" %}: <strong>{{ teacher.full_name }}</strong><br>
-    {% trans "E-mail" %}: <strong>{{ teacher.email }}</strong>
-</p>
+<header>{% trans "Личный кабинет преподавателя" %}</header>
+<main>
+    <p style="margin-bottom:1rem;">
+        {% trans "Вы зашли как" %}: <strong>{{ teacher.full_name }}</strong><br>
+        {% trans "E-mail" %}: <strong>{{ teacher.email }}</strong>
+    </p>
 
-{# ========================================= #}
-{# БЛОК 1: Список предметных групп           #}
-{# ========================================= #}
-{% if subject_groups %}
-    <h2>{% trans "Ваши предметные группы:" %}</h2>
-    <table>
-        <thead>
-        <tr>
-            <th>{% trans "Предмет" %}</th>
-            <th>{% trans "Предметная группа" %}</th>
-            <th>{% trans "Студенты в группе" %}</th>
-            <th>{% trans "Переведены из группы" %}</th>
-            <th>{% trans "Переведены в группу" %}</th>
-        </tr>
-        </thead>
-        <tbody>
-        {% for group in subject_groups %}
+    {# ========================================= #}
+    {# БЛОК 1: Список предметных групп           #}
+    {# ========================================= #}
+    {% if subject_groups %}
+        <h2>{% trans "Ваши предметные группы:" %}</h2>
+
+        <table class="groups">
+            <thead>
             <tr>
-                <td>{{ group.subject.name }}</td>
-                <td>{{ group }}</td>
-                <!-- текущие -->
-                <td>
-                    {% if group.students.all %}
-                        <ol>
-                            {% for student in group.students.all %}
-                                <li>{{ student.full_name }}</li>
-                            {% endfor %}
-                        </ol>
-                    {% else %}
-                        <em>—</em>
-                    {% endif %}
-                </td>
-                <!-- Переведены из группы -->
-                <td>
-                    {% if group.transferred_from %}
-                        <ol>
-                            {% for req in group.transferred_from %}
-                                <li>{{ req.student.full_name }}</li>
-                            {% endfor %}
-                        </ol>
-                    {% else %}
-                        <em>—</em>
-                    {% endif %}
-                </td>
-                <!-- Переведены в группу -->
-                <td>
-                    {% if group.transferred_to %}
-                        <ol>
-                            {% for req in group.transferred_to %}
-                                <li>{{ req.student.full_name }}</li>
-                            {% endfor %}
-                        </ol>
-                    {% else %}
-                        <em>—</em>
-                    {% endif %}
-                </td>
-                </td>
+                <th>{% trans "Предмет" %}</th>
+                <th>{% trans "Предметная группа" %}</th>
+                <th>{% trans "Студенты в группе" %}</th>
+                <th>{% trans "Переведены из группы" %}</th>
+                <th>{% trans "Переведены в группу" %}</th>
             </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-{% else %}
-    <p>{% trans "У вас пока нет назначенных предметных групп." %}</p>
-{% endif %}
+            </thead>
+            <tbody>
+            {% for g in subject_groups %}
+                <tr>
+                    <td data-label="{% trans 'Предмет' %}">{{ g.subject.name }}</td>
+                    <td data-label="{% trans 'Предметная группа' %}">{{ g }}</td>
 
-<br><br>
+                    <!-- текущие -->
+                    <td data-label="{% trans 'Студенты в группе' %}">
+                        {% if g.students.all %}
+                            <ol>{% for s in g.students.all %}
+                                <li>{{ s.full_name }}</li>{% endfor %}</ol>
+                        {% else %}<em>—</em>{% endif %}
+                    </td>
 
-{# ========================================= #}
-{# БЛОК 2: Таблица заявок на перевод         #}
-{# ========================================= #}
-<h2>{% trans "Заявки на перевод студентов" %}</h2>
-{% if transfer_requests %}
-    <table>
-        <thead>
-        <tr>
-            <th>{% trans "№" %}</th>
-            <th>{% trans "Предмет" %}</th>
-            <th>{% trans "Студент" %}</th>
-            <th>{% trans "Из группы" %}</th>
-            <th>{% trans "В группу" %}</th>
-            <th>{% trans "Действие" %}</th>
-        </tr>
-        </thead>
-        <tbody>
-        {% for req in transfer_requests %}
+                    <!-- переведены из -->
+                    <td data-label="{% trans 'Переведены из группы' %}">
+                        {% if g.transferred_from %}
+                            <ol>{% for req in g.transferred_from %}
+                                <li>{{ req.student.full_name }}</li>{% endfor %}</ol>
+                        {% else %}<em>—</em>{% endif %}
+                    </td>
+
+                    <!-- переведены в -->
+                    <td data-label="{% trans 'Переведены в группу' %}">
+                        {% if g.transferred_to %}
+                            <ol>{% for req in g.transferred_to %}
+                                <li>{{ req.student.full_name }}</li>{% endfor %}</ol>
+                        {% else %}<em>—</em>{% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>{% trans "У вас пока нет назначенных предметных групп." %}</p>
+    {% endif %}
+
+    {# ========================================= #}
+    {# БЛОК 2: Таблица заявок на перевод         #}
+    {# ========================================= #}
+    <h2 style="margin-top:2rem;">{% trans "Заявки на перевод студентов" %}</h2>
+
+    {% if transfer_requests %}
+        <table class="requests">
+            <thead>
             <tr>
-                <td>{{ forloop.counter }}</td>
-                <td>{{ req.subject.name }}</td>
-                <td>{{ req.student.full_name }}</td>
-                <td>{{ req.from_group }}</td>
-                <td>{{ req.to_group }}</td>
-                <td>
-                    <button
-                            type="button"
-                            class="open-approve-modal-btn"
-                            data-req-id="{{ req.pk }}">
-                        {% trans "Одобрить" %}
-                    </button>
-                    <button
-                            type="button"
-                            class="open-reject-modal-btn"
-                            data-req-id="{{ req.pk }}">
-                        {% trans "Отклонить" %}
-                    </button>
-                </td>
+                <th>{% trans "№" %}</th>
+                <th>{% trans "Предмет" %}</th>
+                <th>{% trans "Студент" %}</th>
+                <th>{% trans "Из группы" %}</th>
+                <th>{% trans "В группу" %}</th>
+                <th>{% trans "Действие" %}</th>
             </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-{% else %}
-    <p>{% trans "Нет заявок на перевод, ожидающих вашего решения." %}</p>
-{% endif %}
+            </thead>
+            <tbody>
+            {% for r in transfer_requests %}
+                <tr>
+                    <td data-label="№">{{ forloop.counter }}</td>
+                    <td data-label="{% trans 'Предмет' %}">{{ r.subject.name }}</td>
+                    <td data-label="{% trans 'Студент' %}">{{ r.student.full_name }}</td>
+                    <td data-label="{% trans 'Из группы' %}">{{ r.from_group }}</td>
+                    <td data-label="{% trans 'В группу' %}">{{ r.to_group }}</td>
+                    <td data-label="{% trans 'Действие' %}">
+                        <!-- margin у кнопок внутри таблицы = 0, чтобы высота
+                             строки была одинаковой с текстовыми строками -->
+                        <button type="button"
+                                class="open-approve-modal-btn"
+                                data-req-id="{{ r.pk }}">
+                            {% trans "Одобрить" %}
+                        </button>
+                        <button type="button"
+                                class="open-reject-modal-btn"
+                                data-req-id="{{ r.pk }}">
+                            {% trans "Отклонить" %}
+                        </button>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>{% trans "Нет заявок на перевод, ожидающих вашего решения." %}</p>
+    {% endif %}
 
-<br>
-<p>
-    <a href="{% url 'portal:login' %}?logout=1">
-        {% trans "Выйти" %}
-    </a>
-</p>
+    <p style="margin-top:1rem;">
+        <a href="{% url 'portal:login' %}?logout=1"
+           style="color:var(--c-blue);text-decoration:none;">
+            {% trans "Выйти" %}
+        </a>
+    </p>
+</main>
 
 {# ========================================= #}
 {# БЛОК 3: Модальные окна для форм           #}
@@ -215,14 +372,13 @@
             </div>
             <p>
                 {% blocktrans %}
-                    Вы подтверждаете перевод <strong>{{ req.student.full_name }}</strong>
-                    из <em>{{ req.from_group }}</em> в <em>{{ req.to_group }}</em>?
+                    Вы подтверждаете перевод?
                 {% endblocktrans %}
             </p>
             <label for="comment-approve-{{ req.pk }}">
-                {% trans "Комментарий" %}
+                {% trans "Комментарий " %}
+                <span class="italic-note">{% trans "(необязательно)" %}</span>
             </label>
-            <div class="italic-note">{% trans "(необязательно)" %}</div>
             <textarea
                     id="comment-approve-{{ req.pk }}"
                     rows="4"
@@ -247,15 +403,13 @@
             </div>
             <p>
                 {% blocktrans %}
-                    Вы уверены, что хотите отклонить перевод
-                    <strong>{{ req.student.full_name }}</strong> из
-                    <em>{{ req.from_group }}</em> в <em>{{ req.to_group }}</em>?
+                    Вы уверены, что хотите отклонить перевод?
                 {% endblocktrans %}
             </p>
             <label for="comment-reject-{{ req.pk }}">
-                {% trans "Комментарий" %}
+                {% trans "Комментарий " %}
+                <span class="italic-note">{% trans "(обязательно)" %}</span>
             </label>
-            <div class="italic-note">{% trans "(обязательно)" %}</div>
             <textarea
                     id="comment-reject-{{ req.pk }}"
                     rows="4"
