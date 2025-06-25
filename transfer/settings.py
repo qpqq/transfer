@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-#jgg$h0wiixl2uz4m34&))a+ms3!5p_8$#&h5_kz8v91vk@6rq
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['miptransfer.tw1.ru', 'localhost']
+ALLOWED_HOSTS = ['miptransfer.tw1.ru', 'localhost', '127.0.0.1']
 
 # Application definition
 

@@ -188,3 +188,4 @@ cython_debug/
 .cursorindexingignore
 
 Список_*.ods
+test.py
