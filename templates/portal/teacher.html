@@ -164,7 +164,13 @@
                 left: -9999px;
             }
 
+            .groups tbody {
+                display: block;
+                width: 100%;
+            }
+
             .requests tr {
+                width: 100%;
                 display: flex;
                 flex-direction: column;
                 border-bottom: 1px solid var(--c-gray);
@@ -173,14 +179,16 @@
             .requests td {
                 display: flex;
                 gap: .5rem;
-                padding: .6rem .75rem;
+                padding: .65rem .75rem;
+                align-items: flex-start;
             }
 
             .requests td::before {
                 content: attr(data-label);
                 font-weight: 500;
                 color: #555;
-                width: 45%;
+                /* width: 25%; */
+                flex: 0 0 25%;
             }
         }
 
